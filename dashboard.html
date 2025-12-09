@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>T.E.A.Ms.M - Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .nav {
+            background: #f0f0f0;
+            padding: 10px;
+        }
+        .nav button {
+            margin: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        .content {
+            padding: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        input, select, textarea {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div id="userInfo"></div>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <div class="nav" id="navigation"></div>
+
+    <div class="content">
+        <!-- employee sections -->
+        <div id="logAttendance" class="hidden section">
+            <h3>Log Attendance</h3>
+            <label>Late Reason (if applicable):</label>
+            <input type="text" id="lateReason" placeholder="Leave empty if on time">
+            <button onclick="submitAttendance()">Log Attendance</button>
+            <div id="attendanceMsg"></div>
+        </div>
+
+        <div id="requestLeave" class="hidden section">
+            <h3>Request Leave</h3>
+            <label>Reason:</label>
+            <select id="leaveReason">
+                <option>Sick</option>
+                <option>Personal</option>
+                <option>Official Duties</option>
+                <option>Family Needs</option>
+                <option>Death of a Loved one</option>
+                <option>Other</option>
+            </select>
+            <label>Type:</label>
+            <select id="leaveType">
+                <option>Long leave (3+ days)</option>
+                <option>Day leave</option>
+                <option>Half Day</option>
+                <option>Late Entry</option>
+            </select>
+            <label>Duration (in days):</label>
+            <input type="number" id="leaveDuration" value="1">
+            <label>Context:</label>
+            <textarea id="leaveContext" rows="3"></textarea>
+            <button onclick="submitLeaveRequest()">Submit Request</button>
+            <div id="leaveMsg"></div>
+        </div>
+
+        <div id="openTicket" class="hidden section">
+            <h3>Open IT Help Ticket</h3>
+            <label>Issue Type:</label>
+            <select id="ticketType">
+                <option>Login Error</option>
+                <option>Broken Equipment</option>
+                <option>Other</option>
+            </select>
+            <label>Office Location:</label>
+            <input type="text" id="ticketLocation">
+            <label>Details:</label>
+            <textarea id="ticketInfo" rows="3"></textarea>
+            <button onclick="submitTicket()">Submit Ticket</button>
+            <div id="ticketMsg"></div>
+        </div>
+
+        <div id="reportHR" class="hidden section">
+            <h3>Report to HR</h3>
+            <label>Offender ID:</label>
+            <input type="text" id="offenderID">
+            <label>Reason:</label>
+            <select id="reportReason">
+                <option>Lack of professionalism</option>
+                <option>Overstepping boundaries</option>
+                <option>Favoritism</option>
+                <option>Unfair requests</option>
+                <option>Inappropriate behaviour</option>
+                <option>Other</option>
+            </select>
+            <label>Details:</label>
+            <textarea id="reportDetails" rows="3" placeholder="Dates, times, details of event, evidence, etc."></textarea>
+            <label>Affects:</label>
+            <select id="victimType">
+                <option>Me</option>
+                <option>Someone else I know</option>
+                <option>Multiple People</option>
+            </select>
+            <button onclick="submitReport()">Submit Report</button>
+            <div id="reportMsg"></div>
+        </div>
+
+        <div id="logClient" class="hidden section">
+            <h3>Log Client Acquisition</h3>
+            <label>Client Name:</label>
+            <input type="text" id="clientName">
+            <label>Client Email:</label>
+            <input type="email" id="clientEmail">
+            <label>Spoken Languages:</label>
+            <input type="text" id="clientLanguage">
+            <label>Office Pin Code:</label>
+            <input type="text" id="clientPin">
+            <button onclick="submitClientAcquisition()">Log Client</button>
+            <div id="clientMsg"></div>
+        </div>
+
+        <div id="logBreak" class="hidden section">
+            <h3>Log Break</h3>
+            <label>Break Type:</label>
+            <select id="breakType">
+                <option>Breakfast</option>
+                <option>Lunch</option>
+                <option>Tea time</option>
+                <option>Personal Emergency</option>
+            </select>
+            <button onclick="startBreak()">Start Break</button>
+            <button onclick="endBreak()">End Break</button>
+            <div id="breakMsg"></div>
+        </div>
+
+        <div id="logMeeting" class="hidden section">
+            <h3>Log Meeting</h3>
+            <label>Client Name:</label>
+            <input type="text" id="meetingClient">
+            <label>Duration (minutes):</label>
+            <input type="number" id="meetingDuration">
+            <label>Start Time:</label>
+            <input type="datetime-local" id="meetingStart">
+            <label>Location:</label>
+            <select id="meetingLocation">
+                <option>In-office</option>
+                <option>Virtual</option>
+                <option>Out of Office</option>
+            </select>
+            <div id="outOfOfficeFields" class="hidden">
+                <label>Travel Time (minutes):</label>
+                <input type="number" id="travelTime">
+                <label>Zip Code:</label>
+                <input type="text" id="meetingZip" maxlength="6">
+            </div>
+            <button onclick="submitMeeting()">Log Meeting</button>
+            <div id="meetingMsg"></div>
+        </div>
+
+        <div id="viewHistory" class="hidden section">
+            <h3>History</h3>
+            <div id="historyContent"></div>
+            <button onclick="prevPage()">Previous</button>
+            <span id="pageNum">Page 1</span>
+            <button onclick="nextPage()">Next</button>
+        </div>
+
+        <div id="viewNotifications" class="hidden section">
+            <h3>Notifications</h3>
+            <div id="notifContent"></div>
+        </div>
+
+        <!-- manager sections -->
+        <div id="viewFlagged" class="hidden section">
+            <h3>Flagged Employees</h3>
+            <div id="flaggedContent"></div>
+        </div>
+
+        <div id="viewRequests" class="hidden section">
+            <h3>Leave Requests</h3>
+            <div id="requestsContent"></div>
+        </div>
+
+        <div id="viewTickets" class="hidden section">
+            <h3>IT Tickets</h3>
+            <div id="ticketsContent"></div>
+        </div>
+
+        <div id="sendNotification" class="hidden section">
+            <h3>Send Notification</h3>
+            <label>Recipient ID (or 'department' for entire dept):</label>
+            <input type="text" id="notifRecipient">
+            <label>Subject:</label>
+            <textarea id="notifSubject" rows="3"></textarea>
+            <button onclick="sendNotif()">Send</button>
+            <div id="notifMsg"></div>
+        </div>
+
+        <!-- HR sections -->
+        <div id="viewReports" class="hidden section">
+            <h3>HR Reports</h3>
+            <div id="reportsContent"></div>
+        </div>
+
+        <!-- IT sections -->
+        <div id="itTickets" class="hidden section">
+            <h3>IT Tickets Dashboard</h3>
+            <div id="itTicketsContent"></div>
+        </div>
+
+        <!-- CEO sections -->
+        <div id="ceoStats" class="hidden section">
+            <h3>CEO Dashboard - Statistics</h3>
+            <div id="statsContent"></div>
+        </div>
+    </div>
+
+    <script src="User.js"></script>
+    <script src="Record.js"></script>
+    <script src="app.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

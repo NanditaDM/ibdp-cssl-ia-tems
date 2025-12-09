@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>T.E.A.Ms.M - Login</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 50px;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>T.E.A.Ms.M Login</h2>
+        <form id="loginForm">
+            <label>Email:</label>
+            <input type="email" id="email" required>
+            <label>Password:</label>
+            <input type="password" id="password" required>
+            <button type="submit">Login</button>
+        </form>
+        <div id="errorMsg" class="error"></div>
+    </div>
+
+    <script src="User.js"></script>
+    <script src="Record.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // login form submit
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // try login
+            const result = app.login(email, password);
+
+            if (result.success) {
+                // save current user
+                sessionStorage.setItem('currentUser', JSON.stringify(result.user));
+                // redirect to dashboard
+                window.location.href = 'dashboard.html';
+            } else {
+                document.getElementById('errorMsg').textContent = result.message;
+            }
+        });
+    </script>
+</body>
+</html>
