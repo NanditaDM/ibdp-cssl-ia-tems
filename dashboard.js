@@ -4,7 +4,7 @@ let currentPage = 1;
 const itemsPerPage = 10;
 
 // init dashboard
-window.onload = function() {
+window.onload = function () {
     // get current user from session
     const userJSON = sessionStorage.getItem('currentUser');
     if (!userJSON) {
@@ -23,7 +23,7 @@ window.onload = function() {
     // show meeting location fields toggle
     const meetingLoc = document.getElementById('meetingLocation');
     if (meetingLoc) {
-        meetingLoc.addEventListener('change', function() {
+        meetingLoc.addEventListener('change', function () {
             if (this.value === "Out of Office") {
                 document.getElementById('outOfOfficeFields').classList.remove('hidden');
             } else {

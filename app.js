@@ -28,21 +28,21 @@ class Application {
     // init users - pre-created accounts
     initUsers() {
         // CEO
-        this.#users.push(new CEO("CEO001", "Neha Sharma", "ceo_neha", "NehaCEO@2025"));
+        this.#users.push(new CEO("CEO001", "Neha Sharma", "ceo_neha@turtlemint.com", "NehaCEO@2025"));
 
         // HR
-        this.#users.push(new HR("HR001", "Sarah Jones", "hr@company.com", "hr123"));
+        this.#users.push(new HR("HR001", "Sarah Jones", "hr@turtlemint.com", "hr123"));
 
         // IT
-        this.#users.push(new IT("IT001", "Mike Brown", "it@company.com", "it123"));
+        this.#users.push(new IT("IT001", "Mike Brown", "it@turtlemint.com", "it123"));
 
         // managers
-        const mgr1 = new Manager("MGR001", "Asha Patel", "mgr_asha", "AshaMGR@2025", "Sales", "Sales Manager", null);
+        const mgr1 = new Manager("MGR001", "Asha Patel", "mgr_asha@turtlemint.com", "AshaMGR@2025", "Sales", "Sales Manager", null);
         this.#users.push(mgr1);
 
         // employees
-        const emp1 = new Employee("EMP001", "John Kumar", "emp_john23", "John@123", "Sales", "Sales Rep", "MGR001");
-        const emp2 = new Employee("EMP002", "Rahul Singh", "emp_rahul99", "Rahul@99pass", "Sales", "Sales Rep", "MGR001");
+        const emp1 = new Employee("EMP001", "John Kumar", "emp_john23@turtlemint.com", "John@123", "Sales", "Sales Rep", "MGR001");
+        const emp2 = new Employee("EMP002", "Rahul Singh", "emp_rahul99@turtlemint.com", "Rahul@99pass", "Sales", "Sales Rep", "MGR001");
         this.#users.push(emp1);
         this.#users.push(emp2);
 
@@ -182,6 +182,7 @@ class Application {
                 this.#notifications.push(notif);
             }
         }
+        this.saveToStorage();
 
         return { success: true };
     }
@@ -191,6 +192,7 @@ class Application {
         const now = new Date();
         const ticket = new Ticket(userID, now.toString(), issueType, info, location);
         this.#tickets.push(ticket);
+        this.saveToStorage();
 
         return { success: true };
     }
@@ -200,6 +202,7 @@ class Application {
         const now = new Date();
         const report = new Report(userID, now.toString(), reportType, details, offenderID, victimType);
         this.#reports.push(report);
+        this.saveToStorage();
 
         return { success: true };
     }
@@ -348,7 +351,7 @@ class Application {
         }
 
         // sort by date (newest first)
-        history.sort(function(a, b) {
+        history.sort(function (a, b) {
             return new Date(b.dateTime) - new Date(a.dateTime);
         });
 
@@ -406,6 +409,7 @@ class Application {
 
     // update request status
     updateRequestStatus(requestIndex, status) {
+        this.saveToStorage();
         if (requestIndex >= 0 && requestIndex < this.#requests.length) {
             this.#requests[requestIndex].setStatus(status);
             return { success: true };
@@ -437,6 +441,7 @@ class Application {
 
     // send notification
     sendNotification(senderID, subject, recipients) {
+        this.saveToStorage();
         const now = new Date();
         const notif = new Notification(senderID, now.toString(), subject, recipients);
         this.#notifications.push(notif);
@@ -451,6 +456,7 @@ class Application {
 
     // respond to report
     respondToReport(reportIndex, action) {
+        this.saveToStorage();
         if (reportIndex >= 0 && reportIndex < this.#reports.length) {
             this.#reports[reportIndex].setActionTaken(action);
             this.#reports[reportIndex].setFurtherActionRequested(false); // reset flag
@@ -489,6 +495,7 @@ class Application {
 
     // set ticket ETA
     setTicketETA(ticketIndex, itMemberID, eta) {
+        this.saveToStorage();
         if (ticketIndex >= 0 && ticketIndex < this.#tickets.length) {
             this.#tickets[ticketIndex].setITMemberID(itMemberID);
             this.#tickets[ticketIndex].setETA(eta);
@@ -511,6 +518,7 @@ class Application {
 
     // resolve ticket
     resolveTicket(ticketIndex) {
+        this.saveToStorage();
         if (ticketIndex >= 0 && ticketIndex < this.#tickets.length) {
             this.#tickets[ticketIndex].setStatus("Resolved");
 
@@ -533,6 +541,7 @@ class Application {
 
     // mark ticket unresolved
     markTicketUnresolved(ticketIndex) {
+        this.saveToStorage();
         if (ticketIndex >= 0 && ticketIndex < this.#tickets.length) {
             this.#tickets[ticketIndex].setStatus("Unresolved");
             return { success: true };
@@ -655,12 +664,146 @@ class Application {
                 ["HR001"]
             );
             this.#notifications.push(notif);
+            this.saveToStorage();
 
             return { success: true };
         }
         return { success: false };
     }
+
+    // storage methods for persistence
+    saveToStorage() {
+        try {
+            // save tickets
+            const ticketsData = [];
+            for (let i = 0; i < this.#tickets.length; i++) {
+                ticketsData.push({
+                    userID: this.#tickets[i].getUserID(),
+                    dateTime: this.#tickets[i].getDateTime(),
+                    issueType: this.#tickets[i].getIssueType(),
+                    info: this.#tickets[i].getInfo(),
+                    location: this.#tickets[i].getLocation(),
+                    itMemberID: this.#tickets[i].getITMemberID(),
+                    eta: this.#tickets[i].getETA(),
+                    status: this.#tickets[i].getStatus()
+                });
+            }
+            localStorage.setItem('tickets', JSON.stringify(ticketsData));
+
+            // save requests
+            const requestsData = [];
+            for (let i = 0; i < this.#requests.length; i++) {
+                requestsData.push({
+                    userID: this.#requests[i].getUserID(),
+                    dateTime: this.#requests[i].getDateTime(),
+                    type: this.#requests[i].getType(),
+                    duration: this.#requests[i].getDuration(),
+                    context: this.#requests[i].getContext(),
+                    reason: this.#requests[i].getReason(),
+                    status: this.#requests[i].getStatus()
+                });
+            }
+            localStorage.setItem('requests', JSON.stringify(requestsData));
+
+            // save reports
+            const reportsData = [];
+            for (let i = 0; i < this.#reports.length; i++) {
+                reportsData.push({
+                    userID: this.#reports[i].getUserID(),
+                    dateTime: this.#reports[i].getDateTime(),
+                    reportType: this.#reports[i].getReportType(),
+                    details: this.#reports[i].getDetails(),
+                    offenderID: this.#reports[i].getOffenderID(),
+                    victimType: this.#reports[i].getVictimType(),
+                    actionTaken: this.#reports[i].getActionTaken(),
+                    furtherActionRequested: this.#reports[i].getFurtherActionRequested()
+                });
+            }
+            localStorage.setItem('reports', JSON.stringify(reportsData));
+
+            // save notifications
+            const notifsData = [];
+            for (let i = 0; i < this.#notifications.length; i++) {
+                notifsData.push({
+                    userID: this.#notifications[i].getUserID(),
+                    dateTime: this.#notifications[i].getDateTime(),
+                    subject: this.#notifications[i].getSubject(),
+                    recipients: this.#notifications[i].getRecipients()
+                });
+            }
+            localStorage.setItem('notifications', JSON.stringify(notifsData));
+
+            // save other arrays
+            localStorage.setItem('flaggedEmployees', JSON.stringify(this.#flaggedEmployees));
+        } catch (e) {
+            console.error("Error saving data:", e);
+        }
+    }
+
+    loadFromStorage() {
+        try {
+            // load tickets
+            const ticketsData = localStorage.getItem('tickets');
+            if (ticketsData) {
+                const tickets = JSON.parse(ticketsData);
+                for (let i = 0; i < tickets.length; i++) {
+                    const t = tickets[i];
+                    const ticket = new Ticket(t.userID, t.dateTime, t.issueType, t.info, t.location);
+                    if (t.itMemberID) ticket.setITMemberID(t.itMemberID);
+                    if (t.eta) ticket.setETA(t.eta);
+                    if (t.status) ticket.setStatus(t.status);
+                    this.#tickets.push(ticket);
+                }
+            }
+
+            // load requests
+            const requestsData = localStorage.getItem('requests');
+            if (requestsData) {
+                const requests = JSON.parse(requestsData);
+                for (let i = 0; i < requests.length; i++) {
+                    const r = requests[i];
+                    const req = new Request(r.userID, r.dateTime, r.type, r.duration, r.context, r.reason);
+                    if (r.status) req.setStatus(r.status);
+                    this.#requests.push(req);
+                }
+            }
+
+            // load reports
+            const reportsData = localStorage.getItem('reports');
+            if (reportsData) {
+                const reports = JSON.parse(reportsData);
+                for (let i = 0; i < reports.length; i++) {
+                    const r = reports[i];
+                    const report = new Report(r.userID, r.dateTime, r.reportType, r.details, r.offenderID, r.victimType);
+                    if (r.actionTaken) report.setActionTaken(r.actionTaken);
+                    if (r.furtherActionRequested) report.setFurtherActionRequested(r.furtherActionRequested);
+                    this.#reports.push(report);
+                }
+            }
+
+            // load notifications
+            const notifsData = localStorage.getItem('notifications');
+            if (notifsData) {
+                const notifs = JSON.parse(notifsData);
+                for (let i = 0; i < notifs.length; i++) {
+                    const n = notifs[i];
+                    const notif = new Notification(n.userID, n.dateTime, n.subject, n.recipients);
+                    this.#notifications.push(notif);
+                }
+            }
+
+            // load flagged employees
+            const flaggedData = localStorage.getItem('flaggedEmployees');
+            if (flaggedData) {
+                this.#flaggedEmployees = JSON.parse(flaggedData);
+            }
+        } catch (e) {
+            console.error("Error loading data:", e);
+        }
+    }
 }
 
 // create app instance
 const app = new Application();
+// load saved data from browser storage
+app.loadFromStorage();

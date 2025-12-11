@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>T.E.A.Ms.M - Dashboard</title>
     <style>
@@ -8,6 +9,7 @@
             margin: 0;
             padding: 0;
         }
+
         .header {
             background: #007bff;
             color: white;
@@ -15,42 +17,57 @@
             display: flex;
             justify-content: space-between;
         }
+
         .nav {
             background: #f0f0f0;
             padding: 10px;
         }
+
         .nav button {
             margin: 5px;
             padding: 8px 15px;
             cursor: pointer;
         }
+
         .content {
             padding: 20px;
         }
+
         .hidden {
             display: none;
         }
-        input, select, textarea {
+
+        input,
+        select,
+        textarea {
             margin: 5px 0;
             padding: 5px;
         }
+
         button {
             padding: 8px 15px;
             margin: 5px;
             cursor: pointer;
         }
+
         table {
             border-collapse: collapse;
             width: 100%;
             margin-top: 10px;
         }
-        table, th, td {
+
+        table,
+        th,
+        td {
             border: 1px solid black;
         }
-        th, td {
+
+        th,
+        td {
             padding: 8px;
             text-align: left;
         }
+
         .section {
             margin: 20px 0;
             padding: 15px;
@@ -58,6 +75,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div id="userInfo"></div>
@@ -132,7 +150,8 @@
                 <option>Other</option>
             </select>
             <label>Details:</label>
-            <textarea id="reportDetails" rows="3" placeholder="Dates, times, details of event, evidence, etc."></textarea>
+            <textarea id="reportDetails" rows="3"
+                placeholder="Dates, times, details of event, evidence, etc."></textarea>
             <label>Affects:</label>
             <select id="victimType">
                 <option>Me</option>
@@ -258,4 +277,5 @@
     <script src="app.js"></script>
     <script src="dashboard.js"></script>
 </body>
+
 </html>

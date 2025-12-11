@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Test T.E.A.Ms.M</title>
 </head>
+
 <body>
     <h1>Testing T.E.A.Ms.M Application</h1>
     <div id="testResults"></div>
@@ -16,7 +18,7 @@
 
         // test 1: login
         results += "<h3>Test 1: Login</h3>";
-        const loginResult = app.login("ceo@company.com", "ceo123");
+        const loginResult = app.login("ceo_neha@turtlemint.com", "NehaCEO@2025");
         results += "Login result: " + (loginResult.success ? "SUCCESS" : "FAILED") + "<br>";
         results += "User: " + loginResult.user.name + " (" + loginResult.user.type + ")<br>";
 
@@ -54,4 +56,5 @@
         document.getElementById('testResults').innerHTML = results;
     </script>
 </body>
+
 </html>
