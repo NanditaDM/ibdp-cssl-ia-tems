@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>T.E.A.Ms.M - Dashboard</title>
+    <title>T.E.M.s - Dashboard</title>
     <style>
         body {
             font-family: Arial;
@@ -96,83 +96,54 @@
 
         <div id="requestLeave" class="hidden section">
             <h3>Request Leave</h3>
-            <label>Reason:</label>
-            <select id="leaveReason">
-                <option>Sick</option>
-                <option>Personal</option>
-                <option>Official Duties</option>
-                <option>Family Needs</option>
-                <option>Death of a Loved one</option>
-                <option>Other</option>
-            </select>
+            <div id="leaveDaysDisplay" style="background: #f0f0f0; padding: 10px; margin-bottom: 15px;">
+                <strong>Leave Info:</strong><br>
+                Sick Days Taken: <span id="sickDaysTaken">--</span><br>
+                Personal Days Remaining: <span id="personalDaysRemaining">--</span>
+            </div>
             <label>Type:</label>
             <select id="leaveType">
-                <option>Long leave (3+ days)</option>
-                <option>Day leave</option>
+                <option>Sick</option>
+                <option>Personal</option>
                 <option>Half Day</option>
-                <option>Late Entry</option>
             </select>
-            <label>Duration (in days):</label>
-            <input type="number" id="leaveDuration" value="1">
-            <label>Context:</label>
-            <textarea id="leaveContext" rows="3"></textarea>
+            <label>Reason:</label>
+            <textarea id="leaveReason" rows="3" required placeholder="Reason for leave..."></textarea>
             <button onclick="submitLeaveRequest()">Submit Request</button>
             <div id="leaveMsg"></div>
         </div>
 
         <div id="openTicket" class="hidden section">
-            <h3>Open IT Help Ticket</h3>
-            <label>Issue Type:</label>
-            <select id="ticketType">
-                <option>Login Error</option>
-                <option>Broken Equipment</option>
-                <option>Other</option>
-            </select>
-            <label>Office Location:</label>
-            <input type="text" id="ticketLocation">
-            <label>Details:</label>
-            <textarea id="ticketInfo" rows="3"></textarea>
+            <h3>Open IT Ticket</h3>
+            <label>Description:</label>
+            <textarea id="ticketDescription" rows="3" required placeholder="Describe the issue..."></textarea>
             <button onclick="submitTicket()">Submit Ticket</button>
             <div id="ticketMsg"></div>
         </div>
 
         <div id="reportHR" class="hidden section">
-            <h3>Report to HR</h3>
-            <label>Offender ID:</label>
-            <input type="text" id="offenderID">
-            <label>Reason:</label>
-            <select id="reportReason">
-                <option>Lack of professionalism</option>
-                <option>Overstepping boundaries</option>
-                <option>Favoritism</option>
-                <option>Unfair requests</option>
-                <option>Inappropriate behaviour</option>
-                <option>Other</option>
+            <h3>Submit Report</h3>
+            <label>Target User ID:</label>
+            <input type="number" id="targetUserId">
+            <label>Type:</label>
+            <select id="reportType">
+                <option>Behavior</option>
+                <option>Attendance</option>
             </select>
-            <label>Details:</label>
-            <textarea id="reportDetails" rows="3"
-                placeholder="Dates, times, details of event, evidence, etc."></textarea>
-            <label>Affects:</label>
-            <select id="victimType">
-                <option>Me</option>
-                <option>Someone else I know</option>
-                <option>Multiple People</option>
-            </select>
+            <label>Description:</label>
+            <textarea id="reportDescription" rows="3" required
+                placeholder="Details of the report..."></textarea>
             <button onclick="submitReport()">Submit Report</button>
             <div id="reportMsg"></div>
         </div>
 
         <div id="logClient" class="hidden section">
-            <h3>Log Client Acquisition</h3>
+            <h3>Add Client</h3>
             <label>Client Name:</label>
-            <input type="text" id="clientName">
-            <label>Client Email:</label>
+            <input type="text" id="clientName" required>
+            <label>Client Email (optional):</label>
             <input type="email" id="clientEmail">
-            <label>Spoken Languages:</label>
-            <input type="text" id="clientLanguage">
-            <label>Office Pin Code:</label>
-            <input type="text" id="clientPin">
-            <button onclick="submitClientAcquisition()">Log Client</button>
+            <button onclick="submitClient()">Add Client</button>
             <div id="clientMsg"></div>
         </div>
 
@@ -192,24 +163,14 @@
 
         <div id="logMeeting" class="hidden section">
             <h3>Log Meeting</h3>
-            <label>Client Name:</label>
-            <input type="text" id="meetingClient">
-            <label>Duration (minutes):</label>
-            <input type="number" id="meetingDuration">
-            <label>Start Time:</label>
-            <input type="datetime-local" id="meetingStart">
-            <label>Location:</label>
-            <select id="meetingLocation">
-                <option>In-office</option>
-                <option>Virtual</option>
-                <option>Out of Office</option>
-            </select>
-            <div id="outOfOfficeFields" class="hidden">
-                <label>Travel Time (minutes):</label>
-                <input type="number" id="travelTime">
-                <label>Zip Code:</label>
-                <input type="text" id="meetingZip" maxlength="6">
-            </div>
+            <label>Client Email:</label>
+            <input type="email" id="meetingClientEmail" required placeholder="Enter client email to look up">
+            <label>Meeting Date/Time:</label>
+            <input type="datetime-local" id="meetingDateTime" required>
+            <label>Pincode (if outside office):</label>
+            <input type="text" id="meetingPincode" maxlength="6" placeholder="Leave empty if in-office">
+            <label>Travel Time (hours, if outside office):</label>
+            <input type="number" id="meetingTravelTime" step="0.5">
             <button onclick="submitMeeting()">Log Meeting</button>
             <div id="meetingMsg"></div>
         </div>
@@ -245,18 +206,89 @@
 
         <div id="sendNotification" class="hidden section">
             <h3>Send Notification</h3>
-            <label>Recipient ID (or 'department' for entire dept):</label>
-            <input type="text" id="notifRecipient">
-            <label>Subject:</label>
-            <textarea id="notifSubject" rows="3"></textarea>
+            <label>Recipient Department:</label>
+            <select id="notifRecipientDept">
+                <option>All</option>
+                <option>Sales</option>
+                <option>Acquisition</option>
+                <option>HR</option>
+                <option>IT</option>
+            </select>
+            <label>Message:</label>
+            <textarea id="notifMessage" rows="3" required></textarea>
             <button onclick="sendNotif()">Send</button>
             <div id="notifMsg"></div>
+        </div>
+
+        <div id="viewEmployees" class="hidden section">
+            <h3>View Employees</h3>
+            <div id="employeesContent"></div>
+        </div>
+
+        <div id="bookMeeting" class="hidden section">
+            <h3>Book Meeting with Employee</h3>
+            <label>Employee ID:</label>
+            <input type="number" id="meetingEmployeeID">
+            <label>Meeting Date/Time:</label>
+            <input type="datetime-local" id="managerMeetingDateTime">
+            <label>Purpose:</label>
+            <input type="text" id="meetingPurpose">
+            <label>Location:</label>
+            <select id="meetingLocationManager">
+                <option>Manager's Office</option>
+                <option>Employee's Desk</option>
+                <option>Conference Room</option>
+                <option>Virtual</option>
+            </select>
+            <button onclick="submitManagerMeeting()">Book Meeting</button>
+            <div id="managerMeetingMsg"></div>
+        </div>
+
+        <div id="viewEmployeeMeetings" class="hidden section">
+            <h3>Employee Meeting Logs</h3>
+            <div id="employeeMeetingsContent"></div>
+        </div>
+
+        <div id="viewClients" class="hidden section">
+            <h3>Client List</h3>
+            <div id="clientsContent"></div>
+        </div>
+
+        <div id="updateClient" class="hidden section">
+            <h3>Update Client</h3>
+            <label>Client ID:</label>
+            <input type="number" id="updateClientId" readonly>
+            <label>Client Name:</label>
+            <input type="text" id="updateClientName" required>
+            <label>Client Email (optional):</label>
+            <input type="email" id="updateClientEmail">
+            <button onclick="submitUpdateClient()">Update Client</button>
+            <div id="updateClientMsg"></div>
         </div>
 
         <!-- HR sections -->
         <div id="viewReports" class="hidden section">
             <h3>HR Reports</h3>
             <div id="reportsContent"></div>
+        </div>
+
+        <div id="viewTrends" class="hidden section">
+            <h3>HR Trends Dashboard</h3>
+            <div id="trendsContent"></div>
+        </div>
+
+        <div id="viewHRMeetings" class="hidden section">
+            <h3>HR Meeting Requests</h3>
+            <div id="hrMeetingsContent"></div>
+        </div>
+
+        <!-- Employee sections for HR meeting request -->
+        <div id="requestHRMeeting" class="hidden section">
+            <h3>Request Meeting with HR</h3>
+            <label>Purpose:</label>
+            <textarea id="hrMeetingPurpose" rows="3" placeholder="Describe the purpose of the meeting..."></textarea>
+            <button onclick="submitHRMeetingRequest()">Request Meeting</button>
+            <div id="hrMeetingRequestMsg"></div>
         </div>
 
         <!-- IT sections -->

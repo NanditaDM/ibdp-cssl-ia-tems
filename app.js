@@ -1,84 +1,117 @@
-// main app class - encapsulation
+// main application class - uses encapsulation to keep all data private
 class Application {
-    #users; // private
-    #requests; // private
-    #tickets; // private
-    #reports; // private
-    #clients; // private
-    #meetings; // private
-    #attendances; // private
-    #breaks; // private
-    #notifications; // private
-    #flaggedEmployees; // private
+    #users;
+    #leaveRequests;
+    #tickets;
+    #reports;
+    #clients;
+    #meetings;
+    #notifications;
+    #attendances;
+    #breaks;
+    #flaggedEmployees;
+    #managerMeetings;
+    #hrMeetingRequests;
+    #idCounters;
 
     constructor() {
         this.#users = [];
-        this.#requests = [];
+        this.#leaveRequests = [];
         this.#tickets = [];
         this.#reports = [];
         this.#clients = [];
         this.#meetings = [];
+        this.#notifications = [];
         this.#attendances = [];
         this.#breaks = [];
-        this.#notifications = [];
         this.#flaggedEmployees = [];
-        this.initUsers(); // pre-create users
+        this.#managerMeetings = [];
+        this.#hrMeetingRequests = [];
+        this.#idCounters = {
+            users: 0,
+            clients: 0,
+            meetings: 0,
+            leaveRequests: 0,
+            tickets: 0,
+            notifications: 0,
+            reports: 0
+        };
+        this.initUsers();
     }
 
-    // init users - pre-created accounts
+    // generates unique IDs that go up by 1 each time
+    #nextId(type) {
+        this.#idCounters[type]++;
+        return this.#idCounters[type];
+    }
+
+    // filters any record array to only include a manager's own employees
+    // used by getRequestsForManager, getTicketsForManager, getMeetingsForManager
+    #getRecordsForManager(managerId, records, getIdFn) {
+        const result = [];
+        const manager = this.getUserByID(managerId);
+
+        if (manager instanceof Manager) {
+            const empIds = manager.getEmps().map(e => e.id);
+
+            for (let i = 0; i < records.length; i++) {
+                if (empIds.includes(getIdFn(records[i]))) {
+                    result.push(records[i]);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // sets up all the pre-made accounts for testing
     initUsers() {
-        // CEO
-        this.#users.push(new CEO("CEO001", "Neha Sharma", "ceo_neha@turtlemint.com", "NehaCEO@2025"));
+        this.#users.push(new CEO(this.#nextId('users'), "Neha Sharma", "ceo_neha@turtlemint.com", "NehaCEO@2025"));
 
-        // HR
-        this.#users.push(new HR("HR001", "Sarah Jones", "hr@turtlemint.com", "hr123"));
+        // HR and IT are employees with special roles
+        this.#users.push(new Employee(this.#nextId('users'), "Sahil Kapoor", "hr_sahil@turtlemint.com", "SahilHR@data", "HR", null, "HR"));
+        this.#users.push(new Employee(this.#nextId('users'), "Rina Verma", "it_rina@turtlemint.com", "RinaTech#logs", "IT", null, "IT"));
 
-        // IT
-        this.#users.push(new IT("IT001", "Mike Brown", "it@turtlemint.com", "it123"));
-
-        // managers
-        const mgr1 = new Manager("MGR001", "Asha Patel", "mgr_asha@turtlemint.com", "AshaMGR@2025", "Sales", "Sales Manager", null);
+        // managers - each manages a different department
+        const mgr1 = new Manager(this.#nextId('users'), "Asha Patel", "mgr_asha@turtlemint.com", "AshaMGR@2025", "Sales");
+        const mgr2 = new Manager(this.#nextId('users'), "Priya Desai", "mgr_priya@turtlemint.com", "PriyaMGR@2025", "Acquisition");
         this.#users.push(mgr1);
+        this.#users.push(mgr2);
 
-        // employees
-        const emp1 = new Employee("EMP001", "John Kumar", "emp_john23@turtlemint.com", "John@123", "Sales", "Sales Rep", "MGR001");
-        const emp2 = new Employee("EMP002", "Rahul Singh", "emp_rahul99@turtlemint.com", "Rahul@99pass", "Sales", "Sales Rep", "MGR001");
+        // regular employees split between departments
+        const emp1 = new Employee(this.#nextId('users'), "John Kumar", "emp_john23@turtlemint.com", "John@123", "Sales");
+        const emp2 = new Employee(this.#nextId('users'), "Rahul Singh", "emp_rahul99@turtlemint.com", "Rahul@99pass", "Sales");
+        const emp3 = new Employee(this.#nextId('users'), "Anita Roy", "emp_anita@turtlemint.com", "Anita@456", "Acquisition");
+        const emp4 = new Employee(this.#nextId('users'), "Vikram Mehta", "emp_vikram@turtlemint.com", "Vikram@789", "Acquisition");
+
         this.#users.push(emp1);
         this.#users.push(emp2);
+        this.#users.push(emp3);
+        this.#users.push(emp4);
 
-        // add employees to managers
-        mgr1.addEmployee("EMP001");
-        mgr1.addEmployee("EMP002");
+        // link employees to their managers
+        mgr1.addEmployee({ id: emp1.getUserId(), name: emp1.getName() });
+        mgr1.addEmployee({ id: emp2.getUserId(), name: emp2.getName() });
+        mgr2.addEmployee({ id: emp3.getUserId(), name: emp3.getName() });
+        mgr2.addEmployee({ id: emp4.getUserId(), name: emp4.getName() });
     }
 
-    // login method - polymorphism (different user types)
+    // checks email/password and returns user data if valid
     login(email, password) {
         for (let i = 0; i < this.#users.length; i++) {
             if (this.#users[i].getEmail() === email && this.#users[i].getPassword() === password) {
-                // determine user type
-                let userType = "";
-                if (this.#users[i] instanceof CEO) {
-                    userType = "CEO";
-                } else if (this.#users[i] instanceof HR) {
-                    userType = "HR";
-                } else if (this.#users[i] instanceof IT) {
-                    userType = "IT";
-                } else if (this.#users[i] instanceof Manager) {
-                    userType = "Manager";
-                } else if (this.#users[i] instanceof Employee) {
-                    userType = "Employee";
-                }
+                const user = this.#users[i];
+                const role = user.getRole();
 
                 return {
                     success: true,
                     user: {
-                        id: this.#users[i].getUserID(),
-                        name: this.#users[i].getFullName(),
-                        email: this.#users[i].getEmail(),
-                        type: userType,
-                        department: this.#users[i].getDepartment ? this.#users[i].getDepartment() : null,
-                        managerID: this.#users[i].getManagerID ? this.#users[i].getManagerID() : null,
-                        employees: this.#users[i].getEmployees ? this.#users[i].getEmployees() : null
+                        id: user.getUserId(),
+                        name: user.getName(),
+                        email: user.getEmail(),
+                        type: role,
+                        department: user.getDept ? user.getDept() : null,
+                        emps: user.getEmps ? user.getEmps() : null
                     }
                 };
             }
@@ -86,98 +119,154 @@ class Application {
         return { success: false, message: "Invalid email or password" };
     }
 
-    // get user by ID
     getUserByID(id) {
         for (let i = 0; i < this.#users.length; i++) {
-            if (this.#users[i].getUserID() === id) {
+            if (this.#users[i].getUserId() === id) {
                 return this.#users[i];
             }
         }
         return null;
     }
 
-    // log attendance
-    logAttendance(userID, lateReason) {
+    // looks up a user's name by their ID - used for display in notifications
+    getUserName(userId) {
+        const user = this.getUserByID(userId);
+        if (user) {
+            return user.getName();
+        }
+        return null;
+    }
+
+    // finds which manager an employee reports to
+    getManagerForEmployee(employeeId) {
+        for (let i = 0; i < this.#users.length; i++) {
+            if (this.#users[i] instanceof Manager) {
+                const emps = this.#users[i].getEmps();
+                for (let j = 0; j < emps.length; j++) {
+                    if (emps[j].id === employeeId) {
+                        return this.#users[i];
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    // used when logging meetings - you enter client email and it finds the client
+    getClientByEmail(email) {
+        for (let i = 0; i < this.#clients.length; i++) {
+            if (this.#clients[i].getEmail() === email) {
+                return this.#clients[i];
+            }
+        }
+        return null;
+    }
+
+    getClientById(clientId) {
+        for (let i = 0; i < this.#clients.length; i++) {
+            if (this.#clients[i].getClientId() === clientId) {
+                return this.#clients[i];
+            }
+        }
+        return null;
+    }
+
+    // logs attendance and checks if the employee is late
+    // if late too many times in a month, they get flagged
+    logAttendance(userId, lateReason) {
         const now = new Date();
         const date = now.toDateString();
         const time = now.toLocaleTimeString();
 
-        // create attendance record
-        const att = new Attendance(userID, now.toString(), date, time, lateReason);
+        const att = new Attendance(userId, now.toString(), date, time, lateReason);
         this.#attendances.push(att);
 
-        const user = this.getUserByID(userID);
+        const user = this.getUserByID(userId);
         if (user instanceof Employee) {
             user.addAttendance(att);
         }
 
-        // check if late
+        // if they came in after 9am or gave a late reason, count it
         const hour = now.getHours();
-        if (hour >= 9 || lateReason) { // late if after 9am
-            // notify manager
-            const managerID = user.getManagerID();
-            if (managerID) {
+        if (hour >= 9 || lateReason) {
+            if (user instanceof Employee) {
+                user.incrementLateCount();
+            }
+
+            // let the manager know someone was late
+            const manager = this.getManagerForEmployee(userId);
+            if (manager) {
+                const notifId = this.#nextId('notifications');
                 const notif = new Notification(
-                    userID,
-                    now.toString(),
-                    "Employee " + user.getFullName() + " was late. Reason: " + (lateReason || "None provided"),
-                    [managerID]
+                    notifId,
+                    "Employee " + user.getName() + " was late. Reason: " + (lateReason || "None provided"),
+                    userId,
+                    manager.getDept()
                 );
                 this.#notifications.push(notif);
             }
 
-            // check for flags (>3 late in last 20 days)
+            // flag if they've been late more than 3 times this month
             let lateCount = 0;
-            const twentyDaysAgo = new Date();
-            twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
             for (let i = 0; i < this.#attendances.length; i++) {
-                if (this.#attendances[i].getUserID() === userID) {
+                if (this.#attendances[i].getUserID() === userId) {
                     const attDate = new Date(this.#attendances[i].getDateTime());
-                    if (attDate >= twentyDaysAgo && this.#attendances[i].getLateReason()) {
+                    if (attDate >= thirtyDaysAgo && this.#attendances[i].getLateReason()) {
                         lateCount++;
                     }
                 }
             }
 
             if (lateCount > 3) {
-                // flag employee
-                if (!this.#flaggedEmployees.includes(userID)) {
-                    this.#flaggedEmployees.push(userID);
+                if (!this.#flaggedEmployees.includes(userId)) {
+                    this.#flaggedEmployees.push(userId);
                 }
 
-                // notify manager
-                if (managerID) {
+                if (manager) {
+                    const flagNotifId = this.#nextId('notifications');
                     const flagNotif = new Notification(
-                        "SYSTEM",
-                        now.toString(),
-                        "Employee " + user.getFullName() + " has been flagged for >3 late entries in 20 days",
-                        [managerID]
+                        flagNotifId,
+                        "Employee " + user.getName() + " has been flagged for >3 late entries in a month",
+                        0,
+                        manager.getDept()
                     );
                     this.#notifications.push(flagNotif);
                 }
             }
         }
 
+        this.saveToStorage();
         return { success: true };
     }
 
-    // request leave
-    requestLeave(userID, reason, type, duration, context) {
-        const now = new Date();
-        const req = new Request(userID, now.toString(), type, duration, context, reason);
-        this.#requests.push(req);
+    // creates a new leave request and notifies the manager
+    requestLeave(userId, type, reason) {
+        const id = this.#nextId('leaveRequests');
+        const req = new LeaveRequest(id, userId, type, reason);
+        this.#leaveRequests.push(req);
 
-        // notify manager
-        const user = this.getUserByID(userID);
+        // track sick days on the employee object
+        if (type === "Sick") {
+            const user = this.getUserByID(userId);
+            if (user instanceof Employee) {
+                user.incrementSickDays();
+            }
+        }
+
+        // send notification to the manager's department
+        const user = this.getUserByID(userId);
         if (user instanceof Employee) {
-            const managerID = user.getManagerID();
-            if (managerID) {
+            const manager = this.getManagerForEmployee(userId);
+            if (manager) {
+                const notifId = this.#nextId('notifications');
                 const notif = new Notification(
-                    userID,
-                    now.toString(),
-                    "Leave request from " + user.getFullName() + " - " + type + " - " + reason,
-                    [managerID]
+                    notifId,
+                    "Leave request from " + user.getName() + " - " + type + " - " + reason,
+                    userId,
+                    manager.getDept()
                 );
                 this.#notifications.push(notif);
             }
@@ -187,45 +276,70 @@ class Application {
         return { success: true };
     }
 
-    // open ticket
-    openTicket(userID, issueType, info, location) {
-        const now = new Date();
-        const ticket = new Ticket(userID, now.toString(), issueType, info, location);
+    openTicket(userId, description) {
+        const id = this.#nextId('tickets');
+        const ticket = new Ticket(id, userId, description);
         this.#tickets.push(ticket);
         this.saveToStorage();
 
         return { success: true };
     }
 
-    // submit report
-    submitReport(userID, reportType, details, offenderID, victimType) {
-        const now = new Date();
-        const report = new Report(userID, now.toString(), reportType, details, offenderID, victimType);
+    submitReport(reporterUserId, targetUserId, type, description) {
+        const id = this.#nextId('reports');
+        const report = new Report(id, targetUserId, reporterUserId, type, description);
         this.#reports.push(report);
         this.saveToStorage();
 
         return { success: true };
     }
 
-    // log client acquisition
-    logClientAcquisition(userID, name, email, language, pinCode) {
-        const now = new Date();
-        const client = new ClientAcquisition(userID, now.toString(), name, email, language, pinCode);
+    // registers a new client - checks for duplicate emails
+    addClient(name, email) {
+        if (email) {
+            const existing = this.getClientByEmail(email);
+            if (existing) {
+                return { success: false, message: "Client with this email already exists" };
+            }
+        }
+        const id = this.#nextId('clients');
+        const client = new Client(id, name, email);
         this.#clients.push(client);
+        this.saveToStorage();
 
+        return { success: true, clientId: id };
+    }
+
+    // updates an existing client's name and email
+    updateClient(clientId, name, email) {
+        const client = this.getClientById(clientId);
+        if (!client) {
+            return { success: false, message: "Client not found" };
+        }
+
+        // make sure the new email isn't taken by someone else
+        if (email) {
+            const existing = this.getClientByEmail(email);
+            if (existing && existing.getClientId() !== clientId) {
+                return { success: false, message: "Another client already uses this email" };
+            }
+        }
+
+        client.setName(name);
+        client.setEmail(email || null);
+        this.saveToStorage();
         return { success: true };
     }
 
-    // start break
-    startBreak(userID, breakType) {
+    startBreak(userId, breakType) {
         const now = new Date();
         const date = now.toDateString();
         const time = now.toLocaleTimeString();
 
-        const brk = new Break(userID, now.toString(), date, time, breakType);
+        const brk = new Break(userId, now.toString(), date, time, breakType);
         this.#breaks.push(brk);
 
-        const user = this.getUserByID(userID);
+        const user = this.getUserByID(userId);
         if (user instanceof Employee) {
             user.addBreak(brk);
         }
@@ -233,14 +347,13 @@ class Application {
         return { success: true, breakIndex: this.#breaks.length - 1 };
     }
 
-    // end break
-    endBreak(userID) {
+    // finds their most recent open break and closes it
+    endBreak(userId) {
         const now = new Date();
         const time = now.toLocaleTimeString();
 
-        // find last break for user
         for (let i = this.#breaks.length - 1; i >= 0; i--) {
-            if (this.#breaks[i].getUserID() === userID && !this.#breaks[i].getTimeEnd()) {
+            if (this.#breaks[i].getUserID() === userId && !this.#breaks[i].getTimeEnd()) {
                 this.#breaks[i].setTimeEnd(time);
                 return { success: true };
             }
@@ -249,79 +362,75 @@ class Application {
         return { success: false, message: "No active break found" };
     }
 
-    // log meeting
-    logMeeting(userID, clientName, startDateTime, duration, location, pinCode, travelTime) {
-        const now = new Date();
-        const meeting = new Meeting(userID, now.toString(), clientName, startDateTime, duration, location, pinCode, travelTime);
+    // logs a meeting with a client - looks up client by email first
+    // if it's outside office (has pincode), notifies the manager
+    logMeeting(employeeId, clientEmail, dateTime, pincode, travelTime) {
+        const client = this.getClientByEmail(clientEmail);
+        if (!client) {
+            return { success: false, message: "Client not found. Register the client first." };
+        }
+
+        const id = this.#nextId('meetings');
+        const meeting = new Meeting(id, employeeId, client.getClientId(), dateTime, pincode, travelTime);
         this.#meetings.push(meeting);
 
-        // notify manager if out of office
-        if (location === "Out of Office") {
-            const user = this.getUserByID(userID);
+        if (pincode) {
+            const user = this.getUserByID(employeeId);
             if (user instanceof Employee) {
-                const managerID = user.getManagerID();
-                if (managerID) {
+                const manager = this.getManagerForEmployee(employeeId);
+                if (manager) {
+                    const notifId = this.#nextId('notifications');
                     const notif = new Notification(
-                        userID,
-                        now.toString(),
-                        "Employee " + user.getFullName() + " logged out-of-office meeting with " + clientName,
-                        [managerID]
+                        notifId,
+                        "Employee " + user.getName() + " has an out-of-office meeting at pincode " + pincode,
+                        employeeId,
+                        manager.getDept()
                     );
                     this.#notifications.push(notif);
                 }
             }
         }
 
+        this.saveToStorage();
         return { success: true };
     }
 
-    // get user history
-    getUserHistory(userID) {
+    // pulls together all records for a user into one timeline
+    getUserHistory(userId) {
         const history = [];
 
-        // add all records for user
-        for (let i = 0; i < this.#requests.length; i++) {
-            if (this.#requests[i].getUserID() === userID) {
+        for (let i = 0; i < this.#leaveRequests.length; i++) {
+            if (this.#leaveRequests[i].getEmployeeId() === userId) {
                 history.push({
-                    type: "Request",
-                    data: this.#requests[i],
-                    dateTime: this.#requests[i].getDateTime()
+                    type: "Leave Request",
+                    data: this.#leaveRequests[i],
+                    dateTime: this.#leaveRequests[i].getDate()
                 });
             }
         }
 
         for (let i = 0; i < this.#tickets.length; i++) {
-            if (this.#tickets[i].getUserID() === userID) {
+            if (this.#tickets[i].getFlaggerId() === userId) {
                 history.push({
                     type: "Ticket",
                     data: this.#tickets[i],
-                    dateTime: this.#tickets[i].getDateTime()
+                    dateTime: new Date().toISOString()
                 });
             }
         }
 
         for (let i = 0; i < this.#reports.length; i++) {
-            if (this.#reports[i].getUserID() === userID) {
+            if (this.#reports[i].getReporterUserId() === userId) {
                 history.push({
                     type: "Report",
                     data: this.#reports[i],
-                    dateTime: this.#reports[i].getDateTime()
-                });
-            }
-        }
-
-        for (let i = 0; i < this.#clients.length; i++) {
-            if (this.#clients[i].getUserID() === userID) {
-                history.push({
-                    type: "Client",
-                    data: this.#clients[i],
-                    dateTime: this.#clients[i].getDateTime()
+                    dateTime: new Date().toISOString()
                 });
             }
         }
 
         for (let i = 0; i < this.#meetings.length; i++) {
-            if (this.#meetings[i].getUserID() === userID) {
+            if (this.#meetings[i].getEmployeeId() === userId) {
                 history.push({
                     type: "Meeting",
                     data: this.#meetings[i],
@@ -331,7 +440,7 @@ class Application {
         }
 
         for (let i = 0; i < this.#breaks.length; i++) {
-            if (this.#breaks[i].getUserID() === userID) {
+            if (this.#breaks[i].getUserID() === userId) {
                 history.push({
                     type: "Break",
                     data: this.#breaks[i],
@@ -341,7 +450,7 @@ class Application {
         }
 
         for (let i = 0; i < this.#attendances.length; i++) {
-            if (this.#attendances[i].getUserID() === userID) {
+            if (this.#attendances[i].getUserID() === userId) {
                 history.push({
                     type: "Attendance",
                     data: this.#attendances[i],
@@ -350,7 +459,7 @@ class Application {
             }
         }
 
-        // sort by date (newest first)
+        // newest stuff first
         history.sort(function (a, b) {
             return new Date(b.dateTime) - new Date(a.dateTime);
         });
@@ -358,21 +467,30 @@ class Application {
         return history;
     }
 
-    // get notifications for user
-    getNotifications(userID) {
+    // each role only sees notifications meant for them
+    // CEO sees everything, HR/IT see their dept + "All", others see only their dept
+    getNotifications(userId) {
+        const user = this.getUserByID(userId);
+        const userDept = user && user.getDept ? user.getDept() : null;
+        const userRole = user ? user.getRole() : null;
         const notifs = [];
 
         for (let i = 0; i < this.#notifications.length; i++) {
-            const recipients = this.#notifications[i].getRecipients();
-            // check if user is recipient
-            if (Array.isArray(recipients)) {
-                for (let j = 0; j < recipients.length; j++) {
-                    if (recipients[j] === userID) {
-                        notifs.push(this.#notifications[i]);
-                        break;
-                    }
-                }
-            } else if (recipients === userID) {
+            const recipDept = this.#notifications[i].getRecipientDept();
+
+            if (userRole === "CEO") {
+                notifs.push(this.#notifications[i]);
+            }
+            else if (userRole === "HR" && (recipDept === "HR" || recipDept === "All")) {
+                notifs.push(this.#notifications[i]);
+            }
+            else if (userRole === "IT" && (recipDept === "IT" || recipDept === "All")) {
+                notifs.push(this.#notifications[i]);
+            }
+            else if (userRole === "Manager" && recipDept === userDept) {
+                notifs.push(this.#notifications[i]);
+            }
+            else if (userRole === "Employee" && recipDept === userDept) {
                 notifs.push(this.#notifications[i]);
             }
         }
@@ -380,419 +498,601 @@ class Application {
         return notifs;
     }
 
-    // get flagged employees
     getFlaggedEmployees() {
         return this.#flaggedEmployees;
     }
 
-    // get requests for manager
-    getRequestsForManager(managerID) {
-        const requests = [];
-        const manager = this.getUserByID(managerID);
-
-        if (manager instanceof Manager) {
-            const employees = manager.getEmployees();
-
-            for (let i = 0; i < this.#requests.length; i++) {
-                const reqUserID = this.#requests[i].getUserID();
-                for (let j = 0; j < employees.length; j++) {
-                    if (employees[j] === reqUserID) {
-                        requests.push(this.#requests[i]);
-                        break;
-                    }
-                }
-            }
-        }
-
-        return requests;
+    // these three use the shared helper to filter by manager's employees
+    getRequestsForManager(managerId) {
+        return this.#getRecordsForManager(managerId, this.#leaveRequests, r => r.getEmployeeId());
     }
 
-    // update request status
-    updateRequestStatus(requestIndex, status) {
-        this.saveToStorage();
-        if (requestIndex >= 0 && requestIndex < this.#requests.length) {
-            this.#requests[requestIndex].setStatus(status);
-            return { success: true };
+    updateRequestStatus(requestId, status) {
+        for (let i = 0; i < this.#leaveRequests.length; i++) {
+            if (this.#leaveRequests[i].getRequestId() === requestId) {
+                this.#leaveRequests[i].setStatus(status);
+                this.saveToStorage();
+                return { success: true };
+            }
         }
         return { success: false };
     }
 
-    // get tickets for manager
-    getTicketsForManager(managerID) {
-        const tickets = [];
-        const manager = this.getUserByID(managerID);
-
-        if (manager instanceof Manager) {
-            const employees = manager.getEmployees();
-
-            for (let i = 0; i < this.#tickets.length; i++) {
-                const ticketUserID = this.#tickets[i].getUserID();
-                for (let j = 0; j < employees.length; j++) {
-                    if (employees[j] === ticketUserID) {
-                        tickets.push(this.#tickets[i]);
-                        break;
-                    }
-                }
-            }
-        }
-
-        return tickets;
+    getTicketsForManager(managerId) {
+        return this.#getRecordsForManager(managerId, this.#tickets, t => t.getFlaggerId());
     }
 
-    // send notification
-    sendNotification(senderID, subject, recipients) {
-        this.saveToStorage();
-        const now = new Date();
-        const notif = new Notification(senderID, now.toString(), subject, recipients);
+    // only CEO, HR, IT, and managers can send notifications
+    // managers are restricted to their own department
+    sendNotification(senderId, message, recipientDept) {
+        const sender = this.getUserByID(senderId);
+        const senderRole = sender ? sender.getRole() : null;
+
+        if (senderRole !== "CEO" && senderRole !== "HR" && senderRole !== "IT" && senderRole !== "Manager") {
+            return { success: false, message: "Unauthorized to send notifications" };
+        }
+
+        if (senderRole === "Manager" && recipientDept !== sender.getDept()) {
+            return { success: false, message: "Managers can only notify their own department" };
+        }
+
+        const id = this.#nextId('notifications');
+        const notif = new Notification(id, message, senderId, recipientDept);
         this.#notifications.push(notif);
+        this.saveToStorage();
 
         return { success: true };
     }
 
-    // get all reports
     getAllReports() {
         return this.#reports;
     }
 
-    // respond to report
-    respondToReport(reportIndex, action) {
-        this.saveToStorage();
-        if (reportIndex >= 0 && reportIndex < this.#reports.length) {
-            this.#reports[reportIndex].setActionTaken(action);
-            this.#reports[reportIndex].setFurtherActionRequested(false); // reset flag
-
-            // notify reporter
-            const reporterID = this.#reports[reportIndex].getUserID();
-            const now = new Date();
-            const notif = new Notification(
-                "HR",
-                now.toString(),
-                "Your report has been addressed. Action: " + action,
-                [reporterID]
-            );
-            this.#notifications.push(notif);
-
-            return { success: true };
-        }
-        return { success: false };
-    }
-
-    // get all tickets
     getAllTickets() {
         return this.#tickets;
     }
 
-    // get unresolved tickets
-    getUnresolvedTickets() {
-        const unresolved = [];
+    getPendingTickets() {
+        const pending = [];
         for (let i = 0; i < this.#tickets.length; i++) {
-            if (this.#tickets[i].getStatus() === "Unresolved") {
-                unresolved.push(this.#tickets[i]);
+            if (this.#tickets[i].getStatus() === "Pending") {
+                pending.push(this.#tickets[i]);
             }
         }
-        return unresolved;
+        return pending;
     }
 
-    // set ticket ETA
-    setTicketETA(ticketIndex, itMemberID, eta) {
-        this.saveToStorage();
-        if (ticketIndex >= 0 && ticketIndex < this.#tickets.length) {
-            this.#tickets[ticketIndex].setITMemberID(itMemberID);
-            this.#tickets[ticketIndex].setETA(eta);
+    // IT team sets an estimated time for when they'll fix the ticket
+    setTicketETA(ticketId, eta) {
+        for (let i = 0; i < this.#tickets.length; i++) {
+            if (this.#tickets[i].getTicketId() === ticketId) {
+                this.#tickets[i].setEta(eta);
 
-            // notify employee
-            const empID = this.#tickets[ticketIndex].getUserID();
-            const now = new Date();
-            const notif = new Notification(
-                itMemberID,
-                now.toString(),
-                "Your IT ticket ETA: " + eta,
-                [empID]
-            );
-            this.#notifications.push(notif);
+                // let the person who raised the ticket know
+                const flaggerId = this.#tickets[i].getFlaggerId();
+                const user = this.getUserByID(flaggerId);
+                if (user && user.getDept) {
+                    const notifId = this.#nextId('notifications');
+                    const notif = new Notification(
+                        notifId,
+                        "Your IT ticket #" + ticketId + " ETA: " + eta,
+                        0,
+                        user.getDept()
+                    );
+                    this.#notifications.push(notif);
+                }
 
-            return { success: true };
+                this.saveToStorage();
+                return { success: true };
+            }
         }
         return { success: false };
     }
 
-    // resolve ticket
-    resolveTicket(ticketIndex) {
-        this.saveToStorage();
-        if (ticketIndex >= 0 && ticketIndex < this.#tickets.length) {
-            this.#tickets[ticketIndex].setStatus("Resolved");
+    resolveTicket(ticketId) {
+        for (let i = 0; i < this.#tickets.length; i++) {
+            if (this.#tickets[i].getTicketId() === ticketId) {
+                this.#tickets[i].setStatus("Resolved");
 
-            // notify employee
-            const empID = this.#tickets[ticketIndex].getUserID();
-            const itMemberID = this.#tickets[ticketIndex].getITMemberID();
-            const now = new Date();
-            const notif = new Notification(
-                itMemberID,
-                now.toString(),
-                "Your IT ticket has been resolved",
-                [empID]
-            );
-            this.#notifications.push(notif);
+                const flaggerId = this.#tickets[i].getFlaggerId();
+                const user = this.getUserByID(flaggerId);
+                if (user && user.getDept) {
+                    const notifId = this.#nextId('notifications');
+                    const notif = new Notification(
+                        notifId,
+                        "Your IT ticket #" + ticketId + " has been resolved",
+                        0,
+                        user.getDept()
+                    );
+                    this.#notifications.push(notif);
+                }
 
-            return { success: true };
+                this.saveToStorage();
+                return { success: true };
+            }
         }
         return { success: false };
     }
 
-    // mark ticket unresolved
-    markTicketUnresolved(ticketIndex) {
-        this.saveToStorage();
-        if (ticketIndex >= 0 && ticketIndex < this.#tickets.length) {
-            this.#tickets[ticketIndex].setStatus("Unresolved");
-            return { success: true };
+    // employee can re-flag a ticket if the issue wasn't actually fixed
+    flagTicket(ticketId) {
+        for (let i = 0; i < this.#tickets.length; i++) {
+            if (this.#tickets[i].getTicketId() === ticketId) {
+                this.#tickets[i].setStatus("Flagged");
+                this.saveToStorage();
+                return { success: true };
+            }
         }
         return { success: false };
     }
 
-    // get CEO stats
+    // gives the CEO a high-level overview of the whole company
     getCEOStats() {
         const today = new Date().toDateString();
         const stats = {
+            totalEmployees: 0,
             flaggedEmployees: this.#flaggedEmployees.length,
             lateToday: 0,
             onBreak: 0,
-            meetingsToday: 0,
             unexcusedAbsences: 0,
-            clientsToday: 0,
-            avgBreakTime: 0,
-            avgMeetingTime: 0
+            totalMeetings: this.#meetings.length,
+            pendingRequests: 0,
+            pendingTickets: 0,
+            totalClients: this.#clients.length,
+            avgBreakTimesByDept: {}
         };
 
-        // late today
+        for (let i = 0; i < this.#users.length; i++) {
+            if (this.#users[i] instanceof Employee) {
+                stats.totalEmployees++;
+            }
+        }
+
         for (let i = 0; i < this.#attendances.length; i++) {
             if (this.#attendances[i].getDate() === today && this.#attendances[i].getLateReason()) {
                 stats.lateToday++;
             }
         }
 
-        // on break
+        // count late entries that don't have an approved leave on the same date
+        for (let i = 0; i < this.#attendances.length; i++) {
+            if (this.#attendances[i].getLateReason()) {
+                const attUserId = this.#attendances[i].getUserID();
+                const attDate = this.#attendances[i].getDate();
+
+                let hasApprovedLeave = false;
+                for (let j = 0; j < this.#leaveRequests.length; j++) {
+                    if (this.#leaveRequests[j].getEmployeeId() === attUserId &&
+                        this.#leaveRequests[j].getDate() === attDate &&
+                        this.#leaveRequests[j].getStatus() === "Approved") {
+                        hasApprovedLeave = true;
+                        break;
+                    }
+                }
+
+                if (!hasApprovedLeave) {
+                    stats.unexcusedAbsences++;
+                }
+            }
+        }
+
         for (let i = 0; i < this.#breaks.length; i++) {
             if (this.#breaks[i].getDate() === today && !this.#breaks[i].getTimeEnd()) {
                 stats.onBreak++;
             }
         }
 
-        // meetings today
-        for (let i = 0; i < this.#meetings.length; i++) {
-            const meetingDate = new Date(this.#meetings[i].getDateTime()).toDateString();
-            if (meetingDate === today) {
-                stats.meetingsToday++;
-            }
-        }
+        // calculate how long breaks are on average for each department
+        const deptBreakTotals = {};
+        const deptBreakCounts = {};
 
-        // clients today
-        for (let i = 0; i < this.#clients.length; i++) {
-            const clientDate = new Date(this.#clients[i].getDateTime()).toDateString();
-            if (clientDate === today) {
-                stats.clientsToday++;
-            }
-        }
-
-        // avg break time
-        let totalBreakTime = 0;
-        let completedBreaks = 0;
         for (let i = 0; i < this.#breaks.length; i++) {
-            if (this.#breaks[i].getDate() === today && this.#breaks[i].getTimeEnd()) {
-                const start = new Date("1970-01-01 " + this.#breaks[i].getTimeStart());
-                const end = new Date("1970-01-01 " + this.#breaks[i].getTimeEnd());
-                const diff = (end - start) / 1000 / 60; // minutes
-                totalBreakTime += diff;
-                completedBreaks++;
+            const brk = this.#breaks[i];
+            if (brk.getTimeEnd()) {
+                const userId = brk.getUserID();
+                const user = this.getUserByID(userId);
+                if (user && user.getDept) {
+                    const dept = user.getDept();
+                    const start = new Date("1970-01-01 " + brk.getTimeStart());
+                    const end = new Date("1970-01-01 " + brk.getTimeEnd());
+                    const durationMins = (end - start) / 60000;
+
+                    if (durationMins > 0) {
+                        if (!deptBreakTotals[dept]) {
+                            deptBreakTotals[dept] = 0;
+                            deptBreakCounts[dept] = 0;
+                        }
+                        deptBreakTotals[dept] += durationMins;
+                        deptBreakCounts[dept]++;
+                    }
+                }
             }
-        }
-        if (completedBreaks > 0) {
-            stats.avgBreakTime = Math.round(totalBreakTime / completedBreaks);
         }
 
-        // avg meeting time
-        let totalMeetingTime = 0;
-        let meetingCount = 0;
-        for (let i = 0; i < this.#meetings.length; i++) {
-            const meetingDate = new Date(this.#meetings[i].getDateTime()).toDateString();
-            if (meetingDate === today) {
-                totalMeetingTime += parseInt(this.#meetings[i].getDuration());
-                meetingCount++;
+        for (let dept in deptBreakTotals) {
+            stats.avgBreakTimesByDept[dept] = Math.round(deptBreakTotals[dept] / deptBreakCounts[dept]);
+        }
+
+        for (let i = 0; i < this.#leaveRequests.length; i++) {
+            if (this.#leaveRequests[i].getStatus() === "Pending") {
+                stats.pendingRequests++;
             }
         }
-        if (meetingCount > 0) {
-            stats.avgMeetingTime = Math.round(totalMeetingTime / meetingCount);
+
+        for (let i = 0; i < this.#tickets.length; i++) {
+            if (this.#tickets[i].getStatus() === "Pending") {
+                stats.pendingTickets++;
+            }
         }
 
         return stats;
     }
 
-    // add user (IT only)
-    addUser(userType, userID, fullName, email, password, department, role, managerID) {
-        let newUser;
+    // manager flags an employee and HR gets notified
+    flagEmployeeForReporting(managerId, employeeId, reason) {
+        const notifId = this.#nextId('notifications');
+        const notif = new Notification(
+            notifId,
+            "Employee #" + employeeId + " flagged for inaccurate reporting: " + reason,
+            managerId,
+            "HR"
+        );
+        this.#notifications.push(notif);
+        this.saveToStorage();
 
-        if (userType === "Employee") {
-            newUser = new Employee(userID, fullName, email, password, department, role, managerID);
-        } else if (userType === "Manager") {
-            newUser = new Manager(userID, fullName, email, password, department, role, managerID);
-        } else if (userType === "HR") {
-            newUser = new HR(userID, fullName, email, password);
-        } else if (userType === "IT") {
-            newUser = new IT(userID, fullName, email, password);
-        } else if (userType === "CEO") {
-            newUser = new CEO(userID, fullName, email, password);
-        }
-
-        if (newUser) {
-            this.#users.push(newUser);
-            return { success: true };
-        }
-
-        return { success: false };
+        return { success: true };
     }
 
-    // request further action on report
-    requestFurtherAction(reportIndex) {
-        if (reportIndex >= 0 && reportIndex < this.#reports.length) {
-            this.#reports[reportIndex].setFurtherActionRequested(true);
+    // manager schedules a meeting with one of their employees
+    bookManagerMeeting(managerId, employeeId, meetingDateTime, purpose, location) {
+        const now = new Date();
+        const meeting = new ManagerMeeting(managerId, now.toString(), employeeId, meetingDateTime, purpose, location);
+        this.#managerMeetings.push(meeting);
 
-            // notify HR
-            const now = new Date();
+        const employee = this.getUserByID(employeeId);
+        if (employee && employee.getDept) {
+            const notifId = this.#nextId('notifications');
             const notif = new Notification(
-                this.#reports[reportIndex].getUserID(),
-                now.toString(),
-                "Further action requested on report about " + this.#reports[reportIndex].getOffenderID(),
-                ["HR001"]
+                notifId,
+                "Meeting scheduled: " + purpose + " on " + meetingDateTime,
+                managerId,
+                employee.getDept()
             );
             this.#notifications.push(notif);
-            this.saveToStorage();
-
-            return { success: true };
         }
-        return { success: false };
+        this.saveToStorage();
+
+        return { success: true };
     }
 
-    // storage methods for persistence
+    // returns all the info a manager needs to see about an employee
+    getEmployeeInfo(employeeId) {
+        const user = this.getUserByID(employeeId);
+        if (user instanceof Employee) {
+            return {
+                id: user.getUserId(),
+                name: user.getName(),
+                email: user.getEmail(),
+                phone: user.getPhone(),
+                department: user.getDept(),
+                lateCount: user.getLateCount(),
+                sickDays: user.getSickDays(),
+                personalDaysRemaining: user.getPersonalDaysRemaining()
+            };
+        }
+        return null;
+    }
+
+    getMeetingsForManager(managerId) {
+        return this.#getRecordsForManager(managerId, this.#meetings, m => m.getEmployeeId());
+    }
+
+    // all clients are shared across the company
+    getClientsForManager(managerId) {
+        return this.#clients;
+    }
+
+    // employee requests a meeting with HR - sends them a notification
+    requestHRMeeting(userId, purpose) {
+        const now = new Date();
+        const request = new HRMeetingRequest(userId, now.toString(), purpose);
+        this.#hrMeetingRequests.push(request);
+
+        const user = this.getUserByID(userId);
+        const notifId = this.#nextId('notifications');
+        const notif = new Notification(
+            notifId,
+            "HR Meeting Request from " + user.getName() + ": " + purpose,
+            userId,
+            "HR"
+        );
+        this.#notifications.push(notif);
+        this.saveToStorage();
+
+        return { success: true };
+    }
+
+    getHRMeetingRequests() {
+        return this.#hrMeetingRequests;
+    }
+
+    getLeaveDays(userId) {
+        const user = this.getUserByID(userId);
+        if (user instanceof Employee) {
+            return {
+                sickDays: user.getSickDays(),
+                personalDays: user.getPersonalDaysRemaining()
+            };
+        }
+        return { sickDays: 0, personalDays: 0 };
+    }
+
+    // looks at the last 30 days and finds patterns like overtime or excessive sick leave
+    getHRTrends() {
+        const trends = {
+            overtimeEmployees: [],
+            excessiveSickLeave: [],
+            totalLateEntries: 0,
+            totalLeaveRequests: 0
+        };
+
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        // find employees who stayed past 6pm on 10+ days
+        const exitTimes = {};
+        for (let i = 0; i < this.#attendances.length; i++) {
+            const att = this.#attendances[i];
+            const attDate = new Date(att.getDateTime());
+            if (attDate >= thirtyDaysAgo) {
+                const userID = att.getUserID();
+                if (!exitTimes[userID]) {
+                    exitTimes[userID] = 0;
+                }
+                if (att.getTimeExit()) {
+                    const exitHour = parseInt(att.getTimeExit().split(':')[0]);
+                    if (exitHour >= 18) {
+                        exitTimes[userID]++;
+                    }
+                }
+            }
+        }
+
+        for (let userID in exitTimes) {
+            if (exitTimes[userID] >= 10) {
+                trends.overtimeEmployees.push(userID);
+            }
+        }
+
+        // employees with 5 or more sick days
+        for (let i = 0; i < this.#users.length; i++) {
+            if (this.#users[i] instanceof Employee && this.#users[i].getSickDays() >= 5) {
+                trends.excessiveSickLeave.push(this.#users[i].getUserId());
+            }
+        }
+
+        for (let i = 0; i < this.#attendances.length; i++) {
+            const attDate = new Date(this.#attendances[i].getDateTime());
+            if (attDate >= thirtyDaysAgo && this.#attendances[i].getLateReason()) {
+                trends.totalLateEntries++;
+            }
+        }
+
+        for (let i = 0; i < this.#leaveRequests.length; i++) {
+            const reqDate = new Date(this.#leaveRequests[i].getDate());
+            if (reqDate >= thirtyDaysAgo) {
+                trends.totalLeaveRequests++;
+            }
+        }
+
+        return trends;
+    }
+
+    // saves everything to localStorage so data persists between sessions
     saveToStorage() {
         try {
-            // save tickets
             const ticketsData = [];
             for (let i = 0; i < this.#tickets.length; i++) {
                 ticketsData.push({
-                    userID: this.#tickets[i].getUserID(),
-                    dateTime: this.#tickets[i].getDateTime(),
-                    issueType: this.#tickets[i].getIssueType(),
-                    info: this.#tickets[i].getInfo(),
-                    location: this.#tickets[i].getLocation(),
-                    itMemberID: this.#tickets[i].getITMemberID(),
-                    eta: this.#tickets[i].getETA(),
+                    ticketId: this.#tickets[i].getTicketId(),
+                    flaggerId: this.#tickets[i].getFlaggerId(),
+                    description: this.#tickets[i].getDescription(),
+                    eta: this.#tickets[i].getEta(),
                     status: this.#tickets[i].getStatus()
                 });
             }
             localStorage.setItem('tickets', JSON.stringify(ticketsData));
 
-            // save requests
             const requestsData = [];
-            for (let i = 0; i < this.#requests.length; i++) {
+            for (let i = 0; i < this.#leaveRequests.length; i++) {
                 requestsData.push({
-                    userID: this.#requests[i].getUserID(),
-                    dateTime: this.#requests[i].getDateTime(),
-                    type: this.#requests[i].getType(),
-                    duration: this.#requests[i].getDuration(),
-                    context: this.#requests[i].getContext(),
-                    reason: this.#requests[i].getReason(),
-                    status: this.#requests[i].getStatus()
+                    requestId: this.#leaveRequests[i].getRequestId(),
+                    employeeId: this.#leaveRequests[i].getEmployeeId(),
+                    date: this.#leaveRequests[i].getDate(),
+                    type: this.#leaveRequests[i].getType(),
+                    reason: this.#leaveRequests[i].getReason(),
+                    status: this.#leaveRequests[i].getStatus()
                 });
             }
-            localStorage.setItem('requests', JSON.stringify(requestsData));
+            localStorage.setItem('leaveRequests', JSON.stringify(requestsData));
 
-            // save reports
             const reportsData = [];
             for (let i = 0; i < this.#reports.length; i++) {
                 reportsData.push({
-                    userID: this.#reports[i].getUserID(),
-                    dateTime: this.#reports[i].getDateTime(),
-                    reportType: this.#reports[i].getReportType(),
-                    details: this.#reports[i].getDetails(),
-                    offenderID: this.#reports[i].getOffenderID(),
-                    victimType: this.#reports[i].getVictimType(),
-                    actionTaken: this.#reports[i].getActionTaken(),
-                    furtherActionRequested: this.#reports[i].getFurtherActionRequested()
+                    reportId: this.#reports[i].getReportId(),
+                    targetUserId: this.#reports[i].getTargetUserId(),
+                    reporterUserId: this.#reports[i].getReporterUserId(),
+                    type: this.#reports[i].getType(),
+                    description: this.#reports[i].getDescription()
                 });
             }
             localStorage.setItem('reports', JSON.stringify(reportsData));
 
-            // save notifications
             const notifsData = [];
             for (let i = 0; i < this.#notifications.length; i++) {
                 notifsData.push({
-                    userID: this.#notifications[i].getUserID(),
-                    dateTime: this.#notifications[i].getDateTime(),
-                    subject: this.#notifications[i].getSubject(),
-                    recipients: this.#notifications[i].getRecipients()
+                    notifId: this.#notifications[i].getNotifId(),
+                    message: this.#notifications[i].getMessage(),
+                    senderId: this.#notifications[i].getSenderId(),
+                    recipientDept: this.#notifications[i].getRecipientDept()
                 });
             }
             localStorage.setItem('notifications', JSON.stringify(notifsData));
 
-            // save other arrays
+            const clientsData = [];
+            for (let i = 0; i < this.#clients.length; i++) {
+                clientsData.push({
+                    clientId: this.#clients[i].getClientId(),
+                    name: this.#clients[i].getName(),
+                    email: this.#clients[i].getEmail()
+                });
+            }
+            localStorage.setItem('clients', JSON.stringify(clientsData));
+
+            const meetingsData = [];
+            for (let i = 0; i < this.#meetings.length; i++) {
+                meetingsData.push({
+                    meetingId: this.#meetings[i].getMeetingId(),
+                    employeeId: this.#meetings[i].getEmployeeId(),
+                    clientId: this.#meetings[i].getClientId(),
+                    pincode: this.#meetings[i].getPincode(),
+                    travelTime: this.#meetings[i].getTravelTime(),
+                    dateTime: this.#meetings[i].getDateTime()
+                });
+            }
+            localStorage.setItem('meetings', JSON.stringify(meetingsData));
+
+            const managerMeetingsData = [];
+            for (let i = 0; i < this.#managerMeetings.length; i++) {
+                managerMeetingsData.push({
+                    userID: this.#managerMeetings[i].getUserID(),
+                    dateTime: this.#managerMeetings[i].getDateTime(),
+                    employeeID: this.#managerMeetings[i].getEmployeeID(),
+                    meetingDateTime: this.#managerMeetings[i].getMeetingDateTime(),
+                    purpose: this.#managerMeetings[i].getPurpose(),
+                    location: this.#managerMeetings[i].getLocation()
+                });
+            }
+            localStorage.setItem('managerMeetings', JSON.stringify(managerMeetingsData));
+
+            const hrMeetingRequestsData = [];
+            for (let i = 0; i < this.#hrMeetingRequests.length; i++) {
+                hrMeetingRequestsData.push({
+                    userID: this.#hrMeetingRequests[i].getUserID(),
+                    dateTime: this.#hrMeetingRequests[i].getDateTime(),
+                    purpose: this.#hrMeetingRequests[i].getPurpose(),
+                    status: this.#hrMeetingRequests[i].getStatus()
+                });
+            }
+            localStorage.setItem('hrMeetingRequests', JSON.stringify(hrMeetingRequestsData));
+
             localStorage.setItem('flaggedEmployees', JSON.stringify(this.#flaggedEmployees));
+            localStorage.setItem('idCounters', JSON.stringify(this.#idCounters));
         } catch (e) {
             console.error("Error saving data:", e);
         }
     }
 
+    // loads everything back from localStorage when the page refreshes
     loadFromStorage() {
         try {
-            // load tickets
+            // restore ID counters (skip users since initUsers already set those)
+            const countersData = localStorage.getItem('idCounters');
+            if (countersData) {
+                const saved = JSON.parse(countersData);
+                this.#idCounters.clients = saved.clients || 0;
+                this.#idCounters.meetings = saved.meetings || 0;
+                this.#idCounters.leaveRequests = saved.leaveRequests || 0;
+                this.#idCounters.tickets = saved.tickets || 0;
+                this.#idCounters.notifications = saved.notifications || 0;
+                this.#idCounters.reports = saved.reports || 0;
+            }
+
             const ticketsData = localStorage.getItem('tickets');
             if (ticketsData) {
                 const tickets = JSON.parse(ticketsData);
                 for (let i = 0; i < tickets.length; i++) {
                     const t = tickets[i];
-                    const ticket = new Ticket(t.userID, t.dateTime, t.issueType, t.info, t.location);
-                    if (t.itMemberID) ticket.setITMemberID(t.itMemberID);
-                    if (t.eta) ticket.setETA(t.eta);
+                    const ticket = new Ticket(t.ticketId, t.flaggerId, t.description);
+                    if (t.eta) ticket.setEta(t.eta);
                     if (t.status) ticket.setStatus(t.status);
                     this.#tickets.push(ticket);
                 }
             }
 
-            // load requests
-            const requestsData = localStorage.getItem('requests');
-            if (requestsData) {
-                const requests = JSON.parse(requestsData);
+            const leaveRequestsData = localStorage.getItem('leaveRequests');
+            if (leaveRequestsData) {
+                const requests = JSON.parse(leaveRequestsData);
                 for (let i = 0; i < requests.length; i++) {
                     const r = requests[i];
-                    const req = new Request(r.userID, r.dateTime, r.type, r.duration, r.context, r.reason);
+                    const req = new LeaveRequest(r.requestId, r.employeeId, r.type, r.reason);
+                    if (r.date) req.setDate(r.date);
                     if (r.status) req.setStatus(r.status);
-                    this.#requests.push(req);
+                    this.#leaveRequests.push(req);
                 }
             }
 
-            // load reports
             const reportsData = localStorage.getItem('reports');
             if (reportsData) {
                 const reports = JSON.parse(reportsData);
                 for (let i = 0; i < reports.length; i++) {
                     const r = reports[i];
-                    const report = new Report(r.userID, r.dateTime, r.reportType, r.details, r.offenderID, r.victimType);
-                    if (r.actionTaken) report.setActionTaken(r.actionTaken);
-                    if (r.furtherActionRequested) report.setFurtherActionRequested(r.furtherActionRequested);
+                    const report = new Report(r.reportId, r.targetUserId, r.reporterUserId, r.type, r.description);
                     this.#reports.push(report);
                 }
             }
 
-            // load notifications
             const notifsData = localStorage.getItem('notifications');
             if (notifsData) {
                 const notifs = JSON.parse(notifsData);
                 for (let i = 0; i < notifs.length; i++) {
                     const n = notifs[i];
-                    const notif = new Notification(n.userID, n.dateTime, n.subject, n.recipients);
+                    const notif = new Notification(n.notifId, n.message, n.senderId, n.recipientDept);
                     this.#notifications.push(notif);
                 }
             }
 
-            // load flagged employees
+            const clientsData = localStorage.getItem('clients');
+            if (clientsData) {
+                const clients = JSON.parse(clientsData);
+                for (let i = 0; i < clients.length; i++) {
+                    const c = clients[i];
+                    const client = new Client(c.clientId, c.name, c.email);
+                    this.#clients.push(client);
+                }
+            }
+
+            const meetingsData = localStorage.getItem('meetings');
+            if (meetingsData) {
+                const meetings = JSON.parse(meetingsData);
+                for (let i = 0; i < meetings.length; i++) {
+                    const m = meetings[i];
+                    const meeting = new Meeting(m.meetingId, m.employeeId, m.clientId, m.dateTime, m.pincode, m.travelTime);
+                    this.#meetings.push(meeting);
+                }
+            }
+
+            const managerMeetingsData = localStorage.getItem('managerMeetings');
+            if (managerMeetingsData) {
+                const meetings = JSON.parse(managerMeetingsData);
+                for (let i = 0; i < meetings.length; i++) {
+                    const m = meetings[i];
+                    const meeting = new ManagerMeeting(m.userID, m.dateTime, m.employeeID, m.meetingDateTime, m.purpose, m.location);
+                    this.#managerMeetings.push(meeting);
+                }
+            }
+
+            const hrMeetingRequestsData = localStorage.getItem('hrMeetingRequests');
+            if (hrMeetingRequestsData) {
+                const requests = JSON.parse(hrMeetingRequestsData);
+                for (let i = 0; i < requests.length; i++) {
+                    const r = requests[i];
+                    const request = new HRMeetingRequest(r.userID, r.dateTime, r.purpose);
+                    if (r.status) request.setStatus(r.status);
+                    this.#hrMeetingRequests.push(request);
+                }
+            }
+
             const flaggedData = localStorage.getItem('flaggedEmployees');
             if (flaggedData) {
                 this.#flaggedEmployees = JSON.parse(flaggedData);
@@ -803,7 +1103,6 @@ class Application {
     }
 }
 
-// create app instance
+// start the app and load any saved data
 const app = new Application();
-// load saved data from browser storage
 app.loadFromStorage();

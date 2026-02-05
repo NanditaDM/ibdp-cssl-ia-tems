@@ -1,11 +1,10 @@
-// dashboard logic
+// handles all the dashboard UI logic
 let currentUser = null;
 let currentPage = 1;
 const itemsPerPage = 10;
 
-// init dashboard
+// when the page loads, check if someone is logged in
 window.onload = function () {
-    // get current user from session
     const userJSON = sessionStorage.getItem('currentUser');
     if (!userJSON) {
         window.location.href = 'login.html';
@@ -13,69 +12,58 @@ window.onload = function () {
     }
 
     currentUser = JSON.parse(userJSON);
-
-    // show user info
     document.getElementById('userInfo').textContent = currentUser.name + " (" + currentUser.type + ")";
-
-    // show nav based on user type
     showNavigation();
-
-    // show meeting location fields toggle
-    const meetingLoc = document.getElementById('meetingLocation');
-    if (meetingLoc) {
-        meetingLoc.addEventListener('change', function () {
-            if (this.value === "Out of Office") {
-                document.getElementById('outOfOfficeFields').classList.remove('hidden');
-            } else {
-                document.getElementById('outOfOfficeFields').classList.add('hidden');
-            }
-        });
-    }
 };
 
-// logout
 function logout() {
     sessionStorage.removeItem('currentUser');
     window.location.href = 'login.html';
 }
 
-// show nav based on user type
+// builds the navigation buttons based on what role the user has
 function showNavigation() {
     const nav = document.getElementById('navigation');
     let buttons = "";
 
-    if (currentUser.type === "Employee" || currentUser.type === "Manager") {
+    // everyone except CEO gets the basic employee buttons
+    if (currentUser.type === "Employee" || currentUser.type === "Manager" || currentUser.type === "HR" || currentUser.type === "IT") {
         buttons += '<button onclick="showSection(\'logAttendance\')">Log Attendance</button>';
         buttons += '<button onclick="showSection(\'requestLeave\')">Request Leave</button>';
         buttons += '<button onclick="showSection(\'openTicket\')">Open IT Ticket</button>';
-        buttons += '<button onclick="showSection(\'reportHR\')">Report to HR</button>';
+        buttons += '<button onclick="showSection(\'reportHR\')">Submit Report</button>';
+        buttons += '<button onclick="showSection(\'requestHRMeeting\')">Request HR Meeting</button>';
         buttons += '<button onclick="showSection(\'logBreak\')">Log Break</button>';
+        buttons += '<button onclick="showSection(\'logClient\')">Add Client</button>';
+        buttons += '<button onclick="showSection(\'logMeeting\')">Log Meeting</button>';
         buttons += '<button onclick="showSection(\'viewHistory\')">View History</button>';
         buttons += '<button onclick="showSection(\'viewNotifications\')">View Notifications</button>';
-
-        // sales dept only
-        if (currentUser.department === "Sales" || currentUser.department === "Acquisition") {
-            buttons += '<button onclick="showSection(\'logClient\')">Log Client</button>';
-            buttons += '<button onclick="showSection(\'logMeeting\')">Log Meeting</button>';
-        }
     }
 
+    // manager-only buttons
     if (currentUser.type === "Manager") {
+        buttons += '<button onclick="showSection(\'viewEmployees\')">View Employees</button>';
+        buttons += '<button onclick="showSection(\'bookMeeting\')">Book Meeting</button>';
+        buttons += '<button onclick="showSection(\'viewEmployeeMeetings\')">View Meeting Logs</button>';
+        buttons += '<button onclick="showSection(\'viewClients\')">View Clients</button>';
         buttons += '<button onclick="showSection(\'viewFlagged\')">View Flagged</button>';
         buttons += '<button onclick="showSection(\'viewRequests\')">View Requests</button>';
         buttons += '<button onclick="showSection(\'viewTickets\')">View Tickets</button>';
         buttons += '<button onclick="showSection(\'sendNotification\')">Send Notification</button>';
     }
 
+    // HR gets reports, trends, and meeting requests
     if (currentUser.type === "HR") {
         buttons += '<button onclick="showSection(\'viewReports\')">View Reports</button>';
+        buttons += '<button onclick="showSection(\'viewTrends\')">View Trends</button>';
+        buttons += '<button onclick="showSection(\'viewHRMeetings\')">View Meeting Requests</button>';
         buttons += '<button onclick="showSection(\'sendNotification\')">Send Notification</button>';
-        buttons += '<button onclick="showSection(\'viewNotifications\')">View Notifications</button>';
     }
 
+    // IT gets their ticket dashboard
     if (currentUser.type === "IT") {
-        buttons += '<button onclick="showSection(\'itTickets\')">View Tickets</button>';
-        buttons += '<button onclick="showSection(\'viewNotifications\')">View Notifications</button>';
+        buttons += '<button onclick="showSection(\'itTickets\')">IT Tickets Dashboard</button>';
+        buttons += '<button onclick="showSection(\'sendNotification\')">Send Notification</button>';
     }
 
     if (currentUser.type === "CEO") {
@@ -87,18 +75,16 @@ function showNavigation() {
     nav.innerHTML = buttons;
 }
 
-// show section
+// hides all sections then shows the one that was clicked
 function showSection(sectionID) {
-    // hide all sections
     const sections = document.querySelectorAll('.section');
     for (let i = 0; i < sections.length; i++) {
         sections[i].classList.add('hidden');
     }
 
-    // show selected
     document.getElementById(sectionID).classList.remove('hidden');
 
-    // load data for specific sections
+    // some sections need to load data when opened
     if (sectionID === 'viewHistory') {
         loadHistory();
     } else if (sectionID === 'viewNotifications') {
@@ -115,10 +101,23 @@ function showSection(sectionID) {
         loadITTickets();
     } else if (sectionID === 'ceoStats') {
         loadCEOStats();
+    } else if (sectionID === 'viewEmployees') {
+        loadEmployees();
+    } else if (sectionID === 'viewEmployeeMeetings') {
+        loadEmployeeMeetings();
+    } else if (sectionID === 'viewTrends') {
+        loadHRTrends();
+    } else if (sectionID === 'viewHRMeetings') {
+        loadHRMeetingRequests();
+    } else if (sectionID === 'requestLeave') {
+        loadLeaveDays();
+    } else if (sectionID === 'viewClients') {
+        loadClients();
+    } else if (sectionID === 'sendNotification') {
+        loadNotifForm();
     }
 }
 
-// submit attendance
 function submitAttendance() {
     const lateReason = document.getElementById('lateReason').value;
 
@@ -132,79 +131,84 @@ function submitAttendance() {
     }
 }
 
-// submit leave request
 function submitLeaveRequest() {
-    const reason = document.getElementById('leaveReason').value;
     const type = document.getElementById('leaveType').value;
-    const duration = document.getElementById('leaveDuration').value;
-    const context = document.getElementById('leaveContext').value;
+    const reason = document.getElementById('leaveReason').value;
 
-    const result = app.requestLeave(currentUser.id, reason, type, duration, context);
+    if (!reason) {
+        document.getElementById('leaveMsg').textContent = "Reason is required";
+        return;
+    }
+
+    const result = app.requestLeave(currentUser.id, type, reason);
 
     if (result.success) {
         document.getElementById('leaveMsg').textContent = "Leave request submitted";
-        document.getElementById('leaveContext').value = "";
+        document.getElementById('leaveReason').value = "";
     } else {
         document.getElementById('leaveMsg').textContent = "Error submitting request";
     }
 }
 
-// submit ticket
 function submitTicket() {
-    const type = document.getElementById('ticketType').value;
-    const location = document.getElementById('ticketLocation').value;
-    const info = document.getElementById('ticketInfo').value;
+    const description = document.getElementById('ticketDescription').value;
 
-    const result = app.openTicket(currentUser.id, type, info, location);
+    if (!description) {
+        document.getElementById('ticketMsg').textContent = "Description is required";
+        return;
+    }
+
+    const result = app.openTicket(currentUser.id, description);
 
     if (result.success) {
         document.getElementById('ticketMsg').textContent = "Ticket submitted";
-        document.getElementById('ticketLocation').value = "";
-        document.getElementById('ticketInfo').value = "";
+        document.getElementById('ticketDescription').value = "";
     } else {
         document.getElementById('ticketMsg').textContent = "Error submitting ticket";
     }
 }
 
-// submit report
 function submitReport() {
-    const offenderID = document.getElementById('offenderID').value;
-    const reason = document.getElementById('reportReason').value;
-    const details = document.getElementById('reportDetails').value;
-    const victimType = document.getElementById('victimType').value;
+    const targetUserId = parseInt(document.getElementById('targetUserId').value);
+    const type = document.getElementById('reportType').value;
+    const description = document.getElementById('reportDescription').value;
 
-    const result = app.submitReport(currentUser.id, reason, details, offenderID, victimType);
+    if (!description) {
+        document.getElementById('reportMsg').textContent = "Description is required";
+        return;
+    }
+
+    const result = app.submitReport(currentUser.id, targetUserId, type, description);
 
     if (result.success) {
         document.getElementById('reportMsg').textContent = "Report submitted";
-        document.getElementById('offenderID').value = "";
-        document.getElementById('reportDetails').value = "";
+        document.getElementById('targetUserId').value = "";
+        document.getElementById('reportDescription').value = "";
     } else {
         document.getElementById('reportMsg').textContent = "Error submitting report";
     }
 }
 
-// submit client acquisition
-function submitClientAcquisition() {
+function submitClient() {
     const name = document.getElementById('clientName').value;
     const email = document.getElementById('clientEmail').value;
-    const language = document.getElementById('clientLanguage').value;
-    const pin = document.getElementById('clientPin').value;
 
-    const result = app.logClientAcquisition(currentUser.id, name, email, language, pin);
+    if (!name) {
+        document.getElementById('clientMsg').textContent = "Client name is required";
+        return;
+    }
+
+    const result = app.addClient(name, email || null);
 
     if (result.success) {
-        document.getElementById('clientMsg').textContent = "Client logged successfully";
+        document.getElementById('clientMsg').textContent = "Client added successfully (ID: " + result.clientId + ")";
         document.getElementById('clientName').value = "";
         document.getElementById('clientEmail').value = "";
-        document.getElementById('clientLanguage').value = "";
-        document.getElementById('clientPin').value = "";
     } else {
-        document.getElementById('clientMsg').textContent = "Error logging client";
+        document.getElementById('clientMsg').textContent = result.message || "Error adding client";
     }
 }
 
-// start break
 function startBreak() {
     const breakType = document.getElementById('breakType').value;
 
@@ -217,7 +221,6 @@ function startBreak() {
     }
 }
 
-// end break
 function endBreak() {
     const result = app.endBreak(currentUser.id);
 
@@ -228,44 +231,37 @@ function endBreak() {
     }
 }
 
-// submit meeting
+// pincode must be exactly 6 digits if provided
 function submitMeeting() {
-    const client = document.getElementById('meetingClient').value;
-    const duration = document.getElementById('meetingDuration').value;
-    const startTime = document.getElementById('meetingStart').value;
-    const location = document.getElementById('meetingLocation').value;
+    const clientEmail = document.getElementById('meetingClientEmail').value;
+    const dateTime = document.getElementById('meetingDateTime').value;
+    const pincode = document.getElementById('meetingPincode').value || null;
+    const travelTime = document.getElementById('meetingTravelTime').value || null;
 
-    let pinCode = null;
-    let travelTime = null;
-
-    if (location === "Out of Office") {
-        pinCode = document.getElementById('meetingZip').value;
-        travelTime = document.getElementById('travelTime').value;
-
-        // validate zip
-        if (pinCode.length !== 6 || isNaN(pinCode)) {
-            document.getElementById('meetingMsg').textContent = "Invalid zip code (must be 6 digits)";
-            return;
-        }
+    if (!clientEmail || !dateTime) {
+        document.getElementById('meetingMsg').textContent = "Client email and date/time are required";
+        return;
     }
 
-    const result = app.logMeeting(currentUser.id, client, startTime, duration, location, pinCode, travelTime);
+    if (pincode && (pincode.length !== 6 || isNaN(pincode))) {
+        document.getElementById('meetingMsg').textContent = "Invalid pincode (must be 6 digits)";
+        return;
+    }
+
+    const result = app.logMeeting(currentUser.id, clientEmail, dateTime, pincode, travelTime ? parseFloat(travelTime) : null);
 
     if (result.success) {
         document.getElementById('meetingMsg').textContent = "Meeting logged successfully";
-        document.getElementById('meetingClient').value = "";
-        document.getElementById('meetingDuration').value = "";
-        document.getElementById('meetingStart').value = "";
-        if (location === "Out of Office") {
-            document.getElementById('meetingZip').value = "";
-            document.getElementById('travelTime').value = "";
-        }
+        document.getElementById('meetingClientEmail').value = "";
+        document.getElementById('meetingDateTime').value = "";
+        document.getElementById('meetingPincode').value = "";
+        document.getElementById('meetingTravelTime').value = "";
     } else {
-        document.getElementById('meetingMsg').textContent = "Error logging meeting";
+        document.getElementById('meetingMsg').textContent = result.message || "Error logging meeting";
     }
 }
 
-// load history
+// shows paginated history - 10 items per page
 function loadHistory() {
     const history = app.getUserHistory(currentUser.id);
 
@@ -275,42 +271,25 @@ function loadHistory() {
 
     let html = "<table><tr><th>Type</th><th>Details</th><th>Date/Time</th><th>Action</th></tr>";
 
-    // get full history to find indices
-    const fullHistory = app.getUserHistory(currentUser.id);
-
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
         let details = "";
         let action = "";
 
-        if (item.type === "Request") {
+        if (item.type === "Leave Request") {
             details = item.data.getType() + " - " + item.data.getReason() + " - " + item.data.getStatus();
         } else if (item.type === "Ticket") {
-            details = item.data.getIssueType() + " - " + item.data.getStatus();
-            // find ticket index in app tickets
+            details = item.data.getDescription() + " - " + item.data.getStatus();
+            // let them re-flag if the issue came back
             if (item.data.getStatus() === "Resolved") {
-                const allTickets = app.getAllTickets();
-                const ticketIndex = allTickets.indexOf(item.data);
-                if (ticketIndex >= 0) {
-                    action = '<button onclick="flagTicketUnresolved(' + ticketIndex + ')">Mark Unresolved</button>';
-                }
+                action = '<button onclick="flagTicketBack(' + item.data.getTicketId() + ')">Flag</button>';
             }
         } else if (item.type === "Report") {
-            details = item.data.getReportType();
-            // show action if action was taken but further action not requested yet
-            if (item.data.getActionTaken() && !item.data.getFurtherActionRequested()) {
-                const allReports = app.getAllReports();
-                const reportIndex = allReports.indexOf(item.data);
-                if (reportIndex >= 0) {
-                    action = '<button onclick="requestFurtherActionOnReport(' + reportIndex + ')">Request Further Action</button>';
-                }
-            } else if (item.data.getActionTaken()) {
-                details += " - Action: " + item.data.getActionTaken();
-            }
-        } else if (item.type === "Client") {
-            details = item.data.getClientName() + " - " + item.data.getClientEmail();
+            details = item.data.getType() + " - " + item.data.getDescription();
         } else if (item.type === "Meeting") {
-            details = item.data.getClientName() + " - " + item.data.getDuration() + " mins";
+            const client = app.getClientById(item.data.getClientId());
+            const clientName = client ? client.getName() : "Unknown";
+            details = "Client: " + clientName + " at " + item.data.getDateTime();
         } else if (item.type === "Break") {
             details = item.data.getBreakType() + " - " + item.data.getTimeStart() + " to " + (item.data.getTimeEnd() || "Ongoing");
         } else if (item.type === "Attendance") {
@@ -326,7 +305,6 @@ function loadHistory() {
     document.getElementById('pageNum').textContent = "Page " + currentPage;
 }
 
-// prev page
 function prevPage() {
     if (currentPage > 1) {
         currentPage--;
@@ -334,7 +312,6 @@ function prevPage() {
     }
 }
 
-// next page
 function nextPage() {
     const history = app.getUserHistory(currentUser.id);
     const totalPages = Math.ceil(history.length / itemsPerPage);
@@ -345,18 +322,24 @@ function nextPage() {
     }
 }
 
-// load notifications
+// shows notifications - "System" for auto-generated ones, otherwise the sender's name
 function loadNotifications() {
     const notifs = app.getNotifications(currentUser.id);
 
-    let html = "<table><tr><th>From</th><th>Subject</th><th>Date/Time</th></tr>";
+    let html = "<table><tr><th>From</th><th>Message</th><th>Target Dept</th></tr>";
 
     for (let i = 0; i < notifs.length; i++) {
-        const senderID = notifs[i].getUserID();
-        const subject = notifs[i].getSubject();
-        const dateTime = notifs[i].getDateTime();
+        const senderId = notifs[i].getSenderId();
+        const message = notifs[i].getMessage();
+        const recipientDept = notifs[i].getRecipientDept();
 
-        html += "<tr><td>" + senderID + "</td><td>" + subject + "</td><td>" + new Date(dateTime).toLocaleString() + "</td></tr>";
+        let senderName = "System";
+        if (senderId !== 0) {
+            const name = app.getUserName(senderId);
+            senderName = name || ("User #" + senderId);
+        }
+
+        html += "<tr><td>" + senderName + "</td><td>" + message + "</td><td>" + recipientDept + "</td></tr>";
     }
 
     html += "</table>";
@@ -364,7 +347,21 @@ function loadNotifications() {
     document.getElementById('notifContent').innerHTML = html;
 }
 
-// load flagged employees (manager)
+// restricts who can send to which departments
+function loadNotifForm() {
+    const dropdown = document.getElementById('notifRecipientDept');
+
+    if (currentUser.type === "Manager") {
+        dropdown.innerHTML = '<option>' + currentUser.department + '</option>';
+    } else if (currentUser.type === "CEO") {
+        dropdown.innerHTML = '<option>All</option><option>Sales</option><option>Acquisition</option><option>HR</option><option>IT</option>';
+    } else if (currentUser.type === "HR") {
+        dropdown.innerHTML = '<option>All</option><option>Sales</option><option>Acquisition</option><option>HR</option><option>IT</option>';
+    } else if (currentUser.type === "IT") {
+        dropdown.innerHTML = '<option>All</option><option>Sales</option><option>Acquisition</option><option>HR</option><option>IT</option>';
+    }
+}
+
 function loadFlagged() {
     const flagged = app.getFlaggedEmployees();
 
@@ -379,28 +376,27 @@ function loadFlagged() {
     document.getElementById('flaggedContent').innerHTML = html;
 }
 
-// load requests (manager)
+// manager sees leave requests from their team
 function loadRequests() {
     const requests = app.getRequestsForManager(currentUser.id);
 
-    let html = "<table><tr><th>Employee</th><th>Type</th><th>Reason</th><th>Duration</th><th>Context</th><th>Status</th><th>Action</th></tr>";
+    let html = "<table><tr><th>Employee</th><th>Date</th><th>Type</th><th>Reason</th><th>Status</th><th>Action</th></tr>";
 
     for (let i = 0; i < requests.length; i++) {
         const req = requests[i];
         const status = req.getStatus();
 
         html += "<tr>";
-        html += "<td>" + req.getUserID() + "</td>";
+        html += "<td>" + req.getEmployeeId() + "</td>";
+        html += "<td>" + req.getDate() + "</td>";
         html += "<td>" + req.getType() + "</td>";
         html += "<td>" + req.getReason() + "</td>";
-        html += "<td>" + req.getDuration() + "</td>";
-        html += "<td>" + req.getContext() + "</td>";
         html += "<td>" + status + "</td>";
         html += "<td>";
 
         if (status === "Pending") {
-            html += '<button onclick="approveRequest(' + i + ')">Approve</button>';
-            html += '<button onclick="denyRequest(' + i + ')">Deny</button>';
+            html += '<button onclick="approveRequest(' + req.getRequestId() + ')">Approve</button>';
+            html += '<button onclick="rejectRequest(' + req.getRequestId() + ')">Reject</button>';
         }
 
         html += "</td>";
@@ -412,35 +408,32 @@ function loadRequests() {
     document.getElementById('requestsContent').innerHTML = html;
 }
 
-// approve request
-function approveRequest(index) {
-    app.updateRequestStatus(index, "Approved");
+function approveRequest(requestId) {
+    app.updateRequestStatus(requestId, "Approved");
     loadRequests();
 }
 
-// deny request
-function denyRequest(index) {
-    const reason = prompt("Enter reason for denial:");
+function rejectRequest(requestId) {
+    const reason = prompt("Enter reason for rejection:");
     if (reason) {
-        app.updateRequestStatus(index, "Denied - " + reason);
+        app.updateRequestStatus(requestId, "Rejected");
         loadRequests();
     }
 }
 
-// load tickets (manager)
+// manager sees IT tickets from their team
 function loadManagerTickets() {
     const tickets = app.getTicketsForManager(currentUser.id);
 
-    let html = "<table><tr><th>Employee</th><th>Issue Type</th><th>Location</th><th>Details</th><th>Status</th></tr>";
+    let html = "<table><tr><th>Flagger ID</th><th>Description</th><th>ETA</th><th>Status</th></tr>";
 
     for (let i = 0; i < tickets.length; i++) {
         const ticket = tickets[i];
 
         html += "<tr>";
-        html += "<td>" + ticket.getUserID() + "</td>";
-        html += "<td>" + ticket.getIssueType() + "</td>";
-        html += "<td>" + ticket.getLocation() + "</td>";
-        html += "<td>" + ticket.getInfo() + "</td>";
+        html += "<td>" + ticket.getFlaggerId() + "</td>";
+        html += "<td>" + ticket.getDescription() + "</td>";
+        html += "<td>" + (ticket.getEta() || "Not set") + "</td>";
         html += "<td>" + ticket.getStatus() + "</td>";
         html += "</tr>";
     }
@@ -450,54 +443,40 @@ function loadManagerTickets() {
     document.getElementById('ticketsContent').innerHTML = html;
 }
 
-// send notification
 function sendNotif() {
-    const recipient = document.getElementById('notifRecipient').value;
-    const subject = document.getElementById('notifSubject').value;
+    const recipientDept = document.getElementById('notifRecipientDept').value;
+    const message = document.getElementById('notifMessage').value;
 
-    let recipients = [];
-
-    if (recipient === "department" && currentUser.type === "Manager") {
-        recipients = currentUser.employees;
-    } else {
-        recipients = [recipient];
+    if (!message) {
+        document.getElementById('notifMsg').textContent = "Message is required";
+        return;
     }
 
-    const result = app.sendNotification(currentUser.id, subject, recipients);
+    const result = app.sendNotification(currentUser.id, message, recipientDept);
 
     if (result.success) {
         document.getElementById('notifMsg').textContent = "Notification sent";
-        document.getElementById('notifRecipient').value = "";
-        document.getElementById('notifSubject').value = "";
+        document.getElementById('notifMessage').value = "";
     } else {
-        document.getElementById('notifMsg').textContent = "Error sending notification";
+        document.getElementById('notifMsg').textContent = result.message || "Error sending notification";
     }
 }
 
-// load reports (HR)
+// HR sees all reports submitted by employees
 function loadReports() {
     const reports = app.getAllReports();
 
-    let html = "<table><tr><th>Reporter</th><th>Offender</th><th>Type</th><th>Details</th><th>Victim Type</th><th>Action Taken</th><th>Further Action?</th><th>Action</th></tr>";
+    let html = "<table><tr><th>Report ID</th><th>Reporter</th><th>Target</th><th>Type</th><th>Description</th></tr>";
 
     for (let i = 0; i < reports.length; i++) {
         const report = reports[i];
 
         html += "<tr>";
-        html += "<td>" + report.getUserID() + "</td>";
-        html += "<td>" + report.getOffenderID() + "</td>";
-        html += "<td>" + report.getReportType() + "</td>";
-        html += "<td>" + report.getDetails() + "</td>";
-        html += "<td>" + report.getVictimType() + "</td>";
-        html += "<td>" + (report.getActionTaken() || "None") + "</td>";
-        html += "<td>" + (report.getFurtherActionRequested() ? "Yes" : "No") + "</td>";
-        html += "<td>";
-
-        if (!report.getActionTaken() || report.getFurtherActionRequested()) {
-            html += '<button onclick="respondReport(' + i + ')">Respond</button>';
-        }
-
-        html += "</td>";
+        html += "<td>" + report.getReportId() + "</td>";
+        html += "<td>" + report.getReporterUserId() + "</td>";
+        html += "<td>" + report.getTargetUserId() + "</td>";
+        html += "<td>" + report.getType() + "</td>";
+        html += "<td>" + report.getDescription() + "</td>";
         html += "</tr>";
     }
 
@@ -506,111 +485,333 @@ function loadReports() {
     document.getElementById('reportsContent').innerHTML = html;
 }
 
-// respond to report
-function respondReport(index) {
-    const action = prompt("Enter action taken:");
-    if (action) {
-        app.respondToReport(index, action);
-        loadReports();
-    }
-}
-
-// load IT tickets
+// IT dashboard - shows ticket counts and lets them set ETAs and resolve
 function loadITTickets() {
     const allTickets = app.getAllTickets();
-    const unresolvedTickets = app.getUnresolvedTickets();
+    const pendingTickets = app.getPendingTickets();
 
-    const today = new Date().toDateString();
-    let todayTotal = 0;
-    let todayResolved = 0;
-    let todayUnresolved = 0;
+    let totalResolved = 0;
+    let totalPending = 0;
+    let totalFlagged = 0;
 
     for (let i = 0; i < allTickets.length; i++) {
-        const ticketDate = new Date(allTickets[i].getDateTime()).toDateString();
-        if (ticketDate === today) {
-            todayTotal++;
-            if (allTickets[i].getStatus() === "Resolved") {
-                todayResolved++;
-            } else {
-                todayUnresolved++;
-            }
+        if (allTickets[i].getStatus() === "Resolved") {
+            totalResolved++;
+        } else if (allTickets[i].getStatus() === "Pending") {
+            totalPending++;
+        } else if (allTickets[i].getStatus() === "Flagged") {
+            totalFlagged++;
         }
     }
 
-    let html = "<h4>Today's Stats</h4>";
-    html += "<p>Total: " + todayTotal + " | Resolved: " + todayResolved + " | Unresolved: " + todayUnresolved + "</p>";
+    let html = "<h4>Ticket Stats</h4>";
+    html += "<p>Total: " + allTickets.length + " | Pending: " + totalPending + " | Resolved: " + totalResolved + " | Flagged: " + totalFlagged + "</p>";
 
-    html += "<h4>Unresolved Tickets</h4>";
-    html += "<table><tr><th>Employee</th><th>Issue Type</th><th>Location</th><th>Details</th><th>ETA</th><th>Action</th></tr>";
+    html += "<h4>Pending Tickets</h4>";
+    html += "<table><tr><th>Ticket ID</th><th>Flagger ID</th><th>Description</th><th>ETA</th><th>Action</th></tr>";
 
-    for (let i = 0; i < unresolvedTickets.length; i++) {
-        const ticket = unresolvedTickets[i];
-        const ticketIndex = allTickets.indexOf(ticket);
+    for (let i = 0; i < pendingTickets.length; i++) {
+        const ticket = pendingTickets[i];
 
         html += "<tr>";
-        html += "<td>" + ticket.getUserID() + "</td>";
-        html += "<td>" + ticket.getIssueType() + "</td>";
-        html += "<td>" + ticket.getLocation() + "</td>";
-        html += "<td>" + ticket.getInfo() + "</td>";
-        html += "<td>" + (ticket.getETA() || "Not set") + "</td>";
+        html += "<td>" + ticket.getTicketId() + "</td>";
+        html += "<td>" + ticket.getFlaggerId() + "</td>";
+        html += "<td>" + ticket.getDescription() + "</td>";
+        html += "<td>" + (ticket.getEta() || "Not set") + "</td>";
         html += "<td>";
 
-        if (!ticket.getETA()) {
-            html += '<button onclick="setETA(' + ticketIndex + ')">Set ETA</button>';
+        if (!ticket.getEta()) {
+            html += '<button onclick="setETA(' + ticket.getTicketId() + ')">Set ETA</button>';
         }
 
-        html += '<button onclick="markResolved(' + ticketIndex + ')">Resolve</button>';
+        html += '<button onclick="markResolved(' + ticket.getTicketId() + ')">Resolve</button>';
         html += "</td>";
         html += "</tr>";
     }
 
     html += "</table>";
 
+    // also show any tickets that employees flagged back
+    let flaggedTickets = [];
+    for (let i = 0; i < allTickets.length; i++) {
+        if (allTickets[i].getStatus() === "Flagged") {
+            flaggedTickets.push(allTickets[i]);
+        }
+    }
+
+    if (flaggedTickets.length > 0) {
+        html += "<h4>Flagged Tickets</h4>";
+        html += "<table><tr><th>Ticket ID</th><th>Flagger ID</th><th>Description</th><th>ETA</th><th>Action</th></tr>";
+
+        for (let i = 0; i < flaggedTickets.length; i++) {
+            const ticket = flaggedTickets[i];
+            html += "<tr>";
+            html += "<td>" + ticket.getTicketId() + "</td>";
+            html += "<td>" + ticket.getFlaggerId() + "</td>";
+            html += "<td>" + ticket.getDescription() + "</td>";
+            html += "<td>" + (ticket.getEta() || "Not set") + "</td>";
+            html += "<td>";
+            html += '<button onclick="markResolved(' + ticket.getTicketId() + ')">Resolve</button>';
+            html += "</td></tr>";
+        }
+
+        html += "</table>";
+    }
+
     document.getElementById('itTicketsContent').innerHTML = html;
 }
 
-// set ETA
-function setETA(index) {
-    const eta = prompt("Enter ETA:");
+function setETA(ticketId) {
+    const eta = prompt("Enter ETA (e.g. 2025-01-15 14:00):");
     if (eta) {
-        app.setTicketETA(index, currentUser.id, eta);
+        app.setTicketETA(ticketId, eta);
         loadITTickets();
     }
 }
 
-// mark resolved
-function markResolved(index) {
-    app.resolveTicket(index);
+function markResolved(ticketId) {
+    app.resolveTicket(ticketId);
     loadITTickets();
 }
 
-// flag ticket unresolved (employee)
-function flagTicketUnresolved(index) {
-    app.markTicketUnresolved(index);
+// employee can flag a ticket again if the fix didn't work
+function flagTicketBack(ticketId) {
+    app.flagTicket(ticketId);
     loadHistory();
 }
 
-// request further action on report (employee)
-function requestFurtherActionOnReport(index) {
-    app.requestFurtherAction(index);
-    alert("Further action request sent to HR");
-    loadHistory();
-}
-
-// load CEO stats
+// CEO stats - company overview with break time averages per dept
 function loadCEOStats() {
     const stats = app.getCEOStats();
 
     let html = "<table>";
+    html += "<tr><td>Total Employees</td><td>" + stats.totalEmployees + "</td></tr>";
     html += "<tr><td>Flagged Employees</td><td>" + stats.flaggedEmployees + "</td></tr>";
     html += "<tr><td>Late Employees Today</td><td>" + stats.lateToday + "</td></tr>";
+    html += "<tr><td>Unexcused Absences</td><td>" + stats.unexcusedAbsences + "</td></tr>";
     html += "<tr><td>Employees on Break</td><td>" + stats.onBreak + "</td></tr>";
-    html += "<tr><td>Sales Meetings Today</td><td>" + stats.meetingsToday + "</td></tr>";
-    html += "<tr><td>Unexcused Absences Today</td><td>" + stats.unexcusedAbsences + "</td></tr>";
-    html += "<tr><td>Clients Acquired Today</td><td>" + stats.clientsToday + "</td></tr>";
-    html += "<tr><td>Avg Break Time (minutes)</td><td>" + stats.avgBreakTime + "</td></tr>";
-    html += "<tr><td>Avg Meeting Time (minutes)</td><td>" + stats.avgMeetingTime + "</td></tr>";
+    html += "<tr><td>Total Meetings</td><td>" + stats.totalMeetings + "</td></tr>";
+    html += "<tr><td>Pending Leave Requests</td><td>" + stats.pendingRequests + "</td></tr>";
+    html += "<tr><td>Pending IT Tickets</td><td>" + stats.pendingTickets + "</td></tr>";
+    html += "<tr><td>Total Clients</td><td>" + stats.totalClients + "</td></tr>";
     html += "</table>";
 
+    html += "<h4>Average Break Times by Department</h4>";
+    const depts = Object.keys(stats.avgBreakTimesByDept);
+    if (depts.length > 0) {
+        html += "<table><tr><th>Department</th><th>Avg Break (mins)</th></tr>";
+        for (let i = 0; i < depts.length; i++) {
+            html += "<tr><td>" + depts[i] + "</td><td>" + stats.avgBreakTimesByDept[depts[i]] + "</td></tr>";
+        }
+        html += "</table>";
+    } else {
+        html += "<p>No break data available yet.</p>";
+    }
+
     document.getElementById('statsContent').innerHTML = html;
+}
+
+// manager sees their team's info including phone, late count, etc.
+function loadEmployees() {
+    if (!currentUser.emps) return;
+
+    let html = "<table><tr><th>Employee ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Department</th><th>Late Count</th><th>Sick Days Taken</th><th>Personal Days Remaining</th></tr>";
+
+    for (let i = 0; i < currentUser.emps.length; i++) {
+        const empRef = currentUser.emps[i];
+        const empInfo = app.getEmployeeInfo(empRef.id);
+
+        if (empInfo) {
+            html += "<tr>";
+            html += "<td>" + empInfo.id + "</td>";
+            html += "<td>" + empInfo.name + "</td>";
+            html += "<td>" + empInfo.email + "</td>";
+            html += "<td>" + (empInfo.phone || "N/A") + "</td>";
+            html += "<td>" + empInfo.department + "</td>";
+            html += "<td>" + empInfo.lateCount + "</td>";
+            html += "<td>" + empInfo.sickDays + "</td>";
+            html += "<td>" + empInfo.personalDaysRemaining + "</td>";
+            html += "</tr>";
+        }
+    }
+
+    html += "</table>";
+    document.getElementById('employeesContent').innerHTML = html;
+}
+
+function submitManagerMeeting() {
+    const employeeID = parseInt(document.getElementById('meetingEmployeeID').value);
+    const meetingDateTime = document.getElementById('managerMeetingDateTime').value;
+    const purpose = document.getElementById('meetingPurpose').value;
+    const location = document.getElementById('meetingLocationManager').value;
+
+    const result = app.bookManagerMeeting(currentUser.id, employeeID, meetingDateTime, purpose, location);
+
+    if (result.success) {
+        document.getElementById('managerMeetingMsg').textContent = "Meeting booked successfully";
+        document.getElementById('meetingEmployeeID').value = "";
+        document.getElementById('managerMeetingDateTime').value = "";
+        document.getElementById('meetingPurpose').value = "";
+    } else {
+        document.getElementById('managerMeetingMsg').textContent = "Error booking meeting";
+    }
+}
+
+// manager can see all meetings their employees have logged
+function loadEmployeeMeetings() {
+    const meetings = app.getMeetingsForManager(currentUser.id);
+
+    let html = "<table><tr><th>Employee</th><th>Client</th><th>Date/Time</th><th>Pincode</th><th>Travel Time (hrs)</th><th>Action</th></tr>";
+
+    for (let i = 0; i < meetings.length; i++) {
+        const meeting = meetings[i];
+        const client = app.getClientById(meeting.getClientId());
+        const clientName = client ? client.getName() : "Unknown";
+
+        html += "<tr>";
+        html += "<td>" + meeting.getEmployeeId() + "</td>";
+        html += "<td>" + clientName + "</td>";
+        html += "<td>" + meeting.getDateTime() + "</td>";
+        html += "<td>" + (meeting.getPincode() || "In-office") + "</td>";
+        html += "<td>" + (meeting.getTravelTime() || "N/A") + "</td>";
+        html += "<td><button onclick=\"flagEmployee(" + meeting.getEmployeeId() + ")\">Flag Employee</button></td>";
+        html += "</tr>";
+    }
+
+    html += "</table>";
+    document.getElementById('employeeMeetingsContent').innerHTML = html;
+}
+
+// manager flags employee for inaccurate meeting reporting
+function flagEmployee(employeeID) {
+    const reason = prompt("Enter reason for flagging:");
+    if (reason) {
+        app.flagEmployeeForReporting(currentUser.id, employeeID, reason);
+        alert("Employee flagged. HR has been notified.");
+    }
+}
+
+function submitHRMeetingRequest() {
+    const purpose = document.getElementById('hrMeetingPurpose').value;
+
+    const result = app.requestHRMeeting(currentUser.id, purpose);
+
+    if (result.success) {
+        document.getElementById('hrMeetingRequestMsg').textContent = "Meeting request sent to HR";
+        document.getElementById('hrMeetingPurpose').value = "";
+    } else {
+        document.getElementById('hrMeetingRequestMsg').textContent = "Error sending request";
+    }
+}
+
+// HR sees trends over the last 30 days
+function loadHRTrends() {
+    const trends = app.getHRTrends();
+
+    let html = "<h4>Trends Over Last 30 Days</h4>";
+    html += "<table>";
+    html += "<tr><td><strong>Total Late Entries</strong></td><td>" + trends.totalLateEntries + "</td></tr>";
+    html += "<tr><td><strong>Total Leave Requests</strong></td><td>" + trends.totalLeaveRequests + "</td></tr>";
+    html += "</table>";
+
+    html += "<h4>Employees with Frequent Overtime (10+ days)</h4>";
+    if (trends.overtimeEmployees.length > 0) {
+        html += "<ul>";
+        for (let i = 0; i < trends.overtimeEmployees.length; i++) {
+            html += "<li>" + trends.overtimeEmployees[i] + "</li>";
+        }
+        html += "</ul>";
+    } else {
+        html += "<p>No employees with excessive overtime.</p>";
+    }
+
+    html += "<h4>Employees with Excessive Sick Leave (5+ days)</h4>";
+    if (trends.excessiveSickLeave.length > 0) {
+        html += "<ul>";
+        for (let i = 0; i < trends.excessiveSickLeave.length; i++) {
+            html += "<li>" + trends.excessiveSickLeave[i] + "</li>";
+        }
+        html += "</ul>";
+    } else {
+        html += "<p>No employees with excessive sick leave.</p>";
+    }
+
+    document.getElementById('trendsContent').innerHTML = html;
+}
+
+function loadHRMeetingRequests() {
+    const requests = app.getHRMeetingRequests();
+
+    let html = "<table><tr><th>Employee ID</th><th>Purpose</th><th>Date/Time</th><th>Status</th></tr>";
+
+    for (let i = 0; i < requests.length; i++) {
+        const req = requests[i];
+
+        html += "<tr>";
+        html += "<td>" + req.getUserID() + "</td>";
+        html += "<td>" + req.getPurpose() + "</td>";
+        html += "<td>" + new Date(req.getDateTime()).toLocaleString() + "</td>";
+        html += "<td>" + req.getStatus() + "</td>";
+        html += "</tr>";
+    }
+
+    html += "</table>";
+    document.getElementById('hrMeetingsContent').innerHTML = html;
+}
+
+// shows how many sick and personal days the employee has used/left
+function loadLeaveDays() {
+    const leaveDays = app.getLeaveDays(currentUser.id);
+    document.getElementById('sickDaysTaken').textContent = leaveDays.sickDays;
+    document.getElementById('personalDaysRemaining').textContent = leaveDays.personalDays;
+}
+
+// client list with edit buttons so managers can update info
+function loadClients() {
+    const clients = app.getClientsForManager(currentUser.id);
+
+    let html = "<table><tr><th>Client ID</th><th>Name</th><th>Email</th><th>Action</th></tr>";
+
+    for (let i = 0; i < clients.length; i++) {
+        const client = clients[i];
+
+        html += "<tr>";
+        html += "<td>" + client.getClientId() + "</td>";
+        html += "<td>" + client.getName() + "</td>";
+        html += "<td>" + (client.getEmail() || "N/A") + "</td>";
+        const safeName = client.getName().replace(/'/g, "\\'");
+        const safeEmail = (client.getEmail() || "").replace(/'/g, "\\'");
+        html += "<td><button onclick=\"editClient(" + client.getClientId() + ", '" + safeName + "', '" + safeEmail + "')\">Edit</button></td>";
+        html += "</tr>";
+    }
+
+    html += "</table>";
+    document.getElementById('clientsContent').innerHTML = html;
+}
+
+// pre-fills the update form with the client's current info
+function editClient(clientId, name, email) {
+    document.getElementById('updateClientId').value = clientId;
+    document.getElementById('updateClientName').value = name;
+    document.getElementById('updateClientEmail').value = email;
+    showSection('updateClient');
+}
+
+function submitUpdateClient() {
+    const clientId = parseInt(document.getElementById('updateClientId').value);
+    const name = document.getElementById('updateClientName').value;
+    const email = document.getElementById('updateClientEmail').value;
+
+    if (!name) {
+        document.getElementById('updateClientMsg').textContent = "Client name is required";
+        return;
+    }
+
+    const result = app.updateClient(clientId, name, email || null);
+
+    if (result.success) {
+        document.getElementById('updateClientMsg').textContent = "Client updated successfully";
+    } else {
+        document.getElementById('updateClientMsg').textContent = result.message || "Error updating client";
+    }
 }

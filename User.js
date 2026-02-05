@@ -1,24 +1,27 @@
-// base class for all users
+// base class for all users - other roles inherit from this
 class User {
-    #userID; // private
-    #fullName; // private
-    #email; // private
-    #password; // private
+    #userId;
+    #name;
+    #email;
+    #password;
+    #role;
+    #phone;
 
-    constructor(userID, fullName, email, password) {
-        this.#userID = userID;
-        this.#fullName = fullName;
+    constructor(userId, name, email, password, role, phone = null) {
+        this.#userId = userId;
+        this.#name = name;
         this.#email = email;
         this.#password = password;
+        this.#role = role;
+        this.#phone = phone;
     }
 
-    // getters
-    getUserID() {
-        return this.#userID;
+    getUserId() {
+        return this.#userId;
     }
 
-    getFullName() {
-        return this.#fullName;
+    getName() {
+        return this.#name;
     }
 
     getEmail() {
@@ -29,40 +32,45 @@ class User {
         return this.#password;
     }
 
-    // setters
-    setPassword(newPass) {
-        this.#password = newPass;
-    }
-}
-
-// employee class - inherits from User
-class Employee extends User {
-    #department; // private
-    #role; // private
-    #managerID; // private
-    #attendance; // private array
-    #breaks; // private array
-
-    constructor(userID, fullName, email, password, department, role, managerID) {
-        super(userID, fullName, email, password); // inheritance
-        this.#department = department;
-        this.#role = role;
-        this.#managerID = managerID;
-        this.#attendance = [];
-        this.#breaks = [];
-    }
-
-    // getters
-    getDepartment() {
-        return this.#department;
-    }
-
     getRole() {
         return this.#role;
     }
 
-    getManagerID() {
-        return this.#managerID;
+    getPhone() {
+        return this.#phone;
+    }
+
+}
+
+// employee class - inherits from User and adds department + tracking fields
+class Employee extends User {
+    #dept;
+    #lateCount;
+    #sickDays;
+    #attendance;
+    #breaks;
+    #personalDaysRemaining;
+
+    constructor(userId, name, email, password, dept, phone = null, role = "Employee") {
+        super(userId, name, email, password, role, phone);
+        this.#dept = dept;
+        this.#lateCount = 0;
+        this.#sickDays = 0;
+        this.#attendance = [];
+        this.#breaks = [];
+        this.#personalDaysRemaining = 10;
+    }
+
+    getDept() {
+        return this.#dept;
+    }
+
+    getLateCount() {
+        return this.#lateCount;
+    }
+
+    getSickDays() {
+        return this.#sickDays;
     }
 
     getAttendance() {
@@ -73,54 +81,51 @@ class Employee extends User {
         return this.#breaks;
     }
 
-    // add attendance record
+    getPersonalDaysRemaining() {
+        return this.#personalDaysRemaining;
+    }
+
     addAttendance(attendanceRecord) {
         this.#attendance.push(attendanceRecord);
     }
 
-    // add break record
     addBreak(breakRecord) {
         this.#breaks.push(breakRecord);
     }
+
+    incrementLateCount() {
+        this.#lateCount++;
+    }
+
+    incrementSickDays() {
+        this.#sickDays++;
+    }
+
 }
 
-// manager class - inherits from Employee
+// manager class - inherits from Employee, manages a list of employees
 class Manager extends Employee {
-    #employees; // private array
+    #emps;
 
-    constructor(userID, fullName, email, password, department, role, managerID) {
-        super(userID, fullName, email, password, department, role, managerID);
-        this.#employees = [];
+    constructor(userId, name, email, password, dept, phone = null) {
+        super(userId, name, email, password, dept, phone, "Manager");
+        this.#emps = [];
     }
 
-    // getters
-    getEmployees() {
-        return this.#employees;
+    // returns employee list sorted alphabetically
+    getEmps() {
+        return this.#emps.slice().sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // add employee under manager
-    addEmployee(employeeID) {
-        this.#employees.push(employeeID);
+    addEmployee(emp) {
+        this.#emps.push(emp);
     }
+
 }
 
-// HR class - inherits from User
-class HR extends User {
-    constructor(userID, fullName, email, password) {
-        super(userID, fullName, email, password);
-    }
-}
-
-// IT class - inherits from User
-class IT extends User {
-    constructor(userID, fullName, email, password) {
-        super(userID, fullName, email, password);
-    }
-}
-
-// CEO class - inherits from User
+// CEO class - inherits directly from User since they don't belong to a department
 class CEO extends User {
-    constructor(userID, fullName, email, password) {
-        super(userID, fullName, email, password);
+    constructor(userId, name, email, password, phone = null) {
+        super(userId, name, email, password, "CEO", phone);
     }
 }
