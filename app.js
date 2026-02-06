@@ -152,6 +152,54 @@ class Application {
         return null;
     }
 
+    // returns all managers so IT can populate the dropdown when adding a user
+    getManagers() {
+        const managers = [];
+        for (let i = 0; i < this.#users.length; i++) {
+            if (this.#users[i] instanceof Manager) {
+                managers.push({
+                    id: this.#users[i].getUserId(),
+                    name: this.#users[i].getName(),
+                    dept: this.#users[i].getDept()
+                });
+            }
+        }
+        return managers;
+    }
+
+    // IT can add new users to the system
+    addUser(name, email, password, role, dept, phone, managerId) {
+        // check for duplicate email
+        for (let i = 0; i < this.#users.length; i++) {
+            if (this.#users[i].getEmail() === email) {
+                return { success: false, message: "A user with this email already exists" };
+            }
+        }
+
+        const id = this.#nextId('users');
+        let newUser;
+
+        if (role === "Manager") {
+            newUser = new Manager(id, name, email, password, dept, phone || null);
+        } else {
+            // Employee, HR, and IT all use Employee class with role parameter
+            newUser = new Employee(id, name, email, password, dept, phone || null, role);
+        }
+
+        this.#users.push(newUser);
+
+        // link to manager if one was selected (not for Manager role)
+        if (managerId && role !== "Manager") {
+            const manager = this.getUserByID(managerId);
+            if (manager instanceof Manager) {
+                manager.addEmployee({ id: newUser.getUserId(), name: newUser.getName() });
+            }
+        }
+
+        this.saveToStorage();
+        return { success: true, userId: id };
+    }
+
     // used when logging meetings - you enter client email and it finds the client
     getClientByEmail(email) {
         for (let i = 0; i < this.#clients.length; i++) {
@@ -891,6 +939,30 @@ class Application {
     // saves everything to localStorage so data persists between sessions
     saveToStorage() {
         try {
+            // save dynamically added users (ID > 9, since initUsers creates 1-9)
+            const dynamicUsersData = [];
+            for (let i = 0; i < this.#users.length; i++) {
+                const u = this.#users[i];
+                if (u.getUserId() > 9) {
+                    const userData = {
+                        userId: u.getUserId(),
+                        name: u.getName(),
+                        email: u.getEmail(),
+                        password: u.getPassword(),
+                        role: u.getRole(),
+                        phone: u.getPhone ? u.getPhone() : null,
+                        dept: u.getDept ? u.getDept() : null
+                    };
+                    // if managed by someone, save the manager ID
+                    const mgr = this.getManagerForEmployee(u.getUserId());
+                    if (mgr) {
+                        userData.managerId = mgr.getUserId();
+                    }
+                    dynamicUsersData.push(userData);
+                }
+            }
+            localStorage.setItem('dynamicUsers', JSON.stringify(dynamicUsersData));
+
             const ticketsData = [];
             for (let i = 0; i < this.#tickets.length; i++) {
                 ticketsData.push({
@@ -996,16 +1068,51 @@ class Application {
     // loads everything back from localStorage when the page refreshes
     loadFromStorage() {
         try {
-            // restore ID counters (skip users since initUsers already set those)
+            // restore ID counters
             const countersData = localStorage.getItem('idCounters');
             if (countersData) {
                 const saved = JSON.parse(countersData);
+                // restore users counter if dynamic users were added
+                if (saved.users && saved.users > 9) {
+                    this.#idCounters.users = saved.users;
+                }
                 this.#idCounters.clients = saved.clients || 0;
                 this.#idCounters.meetings = saved.meetings || 0;
                 this.#idCounters.leaveRequests = saved.leaveRequests || 0;
                 this.#idCounters.tickets = saved.tickets || 0;
                 this.#idCounters.notifications = saved.notifications || 0;
                 this.#idCounters.reports = saved.reports || 0;
+            }
+
+            // restore dynamically added users
+            const dynamicUsersData = localStorage.getItem('dynamicUsers');
+            if (dynamicUsersData) {
+                const users = JSON.parse(dynamicUsersData);
+
+                // first pass: create all dynamic users
+                for (let i = 0; i < users.length; i++) {
+                    const u = users[i];
+                    let newUser;
+
+                    if (u.role === "Manager") {
+                        newUser = new Manager(u.userId, u.name, u.email, u.password, u.dept, u.phone || null);
+                    } else {
+                        newUser = new Employee(u.userId, u.name, u.email, u.password, u.dept, u.phone || null, u.role);
+                    }
+
+                    this.#users.push(newUser);
+                }
+
+                // second pass: link employees to their managers
+                for (let i = 0; i < users.length; i++) {
+                    const u = users[i];
+                    if (u.managerId && u.role !== "Manager") {
+                        const manager = this.getUserByID(u.managerId);
+                        if (manager instanceof Manager) {
+                            manager.addEmployee({ id: u.userId, name: u.name });
+                        }
+                    }
+                }
             }
 
             const ticketsData = localStorage.getItem('tickets');

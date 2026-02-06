@@ -297,6 +297,40 @@
             <div id="itTicketsContent"></div>
         </div>
 
+        <div id="addUser" class="hidden section">
+            <h3>Add New User</h3>
+            <label>Name:</label>
+            <input type="text" id="newUserName" required>
+            <label>Email:</label>
+            <input type="email" id="newUserEmail" required>
+            <label>Password:</label>
+            <input type="password" id="newUserPassword" required>
+            <label>Role:</label>
+            <select id="newUserRole" onchange="updateManagerVisibility()">
+                <option>Employee</option>
+                <option>Manager</option>
+                <option>HR</option>
+                <option>IT</option>
+            </select>
+            <label>Department:</label>
+            <select id="newUserDept">
+                <option>Sales</option>
+                <option>Acquisition</option>
+                <option>HR</option>
+                <option>IT</option>
+            </select>
+            <div id="managerGroup">
+                <label>Assign to Manager:</label>
+                <select id="newUserManager">
+                    <!-- populated dynamically -->
+                </select>
+            </div>
+            <label>Phone (optional):</label>
+            <input type="text" id="newUserPhone">
+            <button onclick="submitNewUser()">Add User</button>
+            <div id="addUserMsg"></div>
+        </div>
+
         <!-- CEO sections -->
         <div id="ceoStats" class="hidden section">
             <h3>CEO Dashboard - Statistics</h3>

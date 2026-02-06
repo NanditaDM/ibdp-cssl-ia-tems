@@ -60,8 +60,9 @@ function showNavigation() {
         buttons += '<button onclick="showSection(\'sendNotification\')">Send Notification</button>';
     }
 
-    // IT gets their ticket dashboard
+    // IT gets their ticket dashboard and can add users
     if (currentUser.type === "IT") {
+        buttons += '<button onclick="showSection(\'addUser\')">Add User</button>';
         buttons += '<button onclick="showSection(\'itTickets\')">IT Tickets Dashboard</button>';
         buttons += '<button onclick="showSection(\'sendNotification\')">Send Notification</button>';
     }
@@ -115,6 +116,8 @@ function showSection(sectionID) {
         loadClients();
     } else if (sectionID === 'sendNotification') {
         loadNotifForm();
+    } else if (sectionID === 'addUser') {
+        loadAddUserForm();
     }
 }
 
@@ -813,5 +816,74 @@ function submitUpdateClient() {
         document.getElementById('updateClientMsg').textContent = "Client updated successfully";
     } else {
         document.getElementById('updateClientMsg').textContent = result.message || "Error updating client";
+    }
+}
+
+// populates the manager dropdown and shows the add user form
+function loadAddUserForm() {
+    const managers = app.getManagers();
+    const managerDropdown = document.getElementById('newUserManager');
+
+    // populate manager dropdown
+    let options = '<option value="">-- Select Manager --</option>';
+    for (let i = 0; i < managers.length; i++) {
+        options += '<option value="' + managers[i].id + '">' + managers[i].name + ' (' + managers[i].dept + ')</option>';
+    }
+    managerDropdown.innerHTML = options;
+
+    // show/hide manager dropdown based on role
+    updateManagerVisibility();
+
+    // clear previous messages
+    document.getElementById('addUserMsg').textContent = '';
+}
+
+// shows manager dropdown for Employee/HR/IT, hides it for Manager role
+function updateManagerVisibility() {
+    const role = document.getElementById('newUserRole').value;
+    const managerGroup = document.getElementById('managerGroup');
+
+    if (role === "Manager") {
+        managerGroup.style.display = "none";
+    } else {
+        managerGroup.style.display = "block";
+    }
+}
+
+function submitNewUser() {
+    const name = document.getElementById('newUserName').value;
+    const email = document.getElementById('newUserEmail').value;
+    const password = document.getElementById('newUserPassword').value;
+    const role = document.getElementById('newUserRole').value;
+    const dept = document.getElementById('newUserDept').value;
+    const phone = document.getElementById('newUserPhone').value;
+    const managerId = document.getElementById('newUserManager').value;
+
+    // validation
+    if (!name || !email || !password) {
+        document.getElementById('addUserMsg').textContent = "Name, email, and password are required";
+        return;
+    }
+
+    const result = app.addUser(
+        name,
+        email,
+        password,
+        role,
+        dept,
+        phone || null,
+        managerId ? parseInt(managerId) : null
+    );
+
+    if (result.success) {
+        document.getElementById('addUserMsg').textContent = "User added successfully (ID: " + result.userId + ")";
+        // clear form
+        document.getElementById('newUserName').value = "";
+        document.getElementById('newUserEmail').value = "";
+        document.getElementById('newUserPassword').value = "";
+        document.getElementById('newUserPhone').value = "";
+        document.getElementById('newUserManager').value = "";
+    } else {
+        document.getElementById('addUserMsg').textContent = result.message || "Error adding user";
     }
 }
