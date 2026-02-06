@@ -43,8 +43,8 @@ function showNavigation() {
         buttons += '<button onclick="showSection(\'logClient\')">Add Client</button>';
     }
 
-    // Sales and Acquisition can log meetings with clients
-    if (currentUser.department === "Sales" || currentUser.department === "Acquisition") {
+    // only Sales can log meetings with clients
+    if (currentUser.department === "Sales") {
         buttons += '<button onclick="showSection(\'logMeeting\')">Log Meeting</button>';
     }
 
