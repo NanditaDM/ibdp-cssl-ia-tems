@@ -53,8 +53,6 @@
             <button type="submit">Login</button>
         </form>
         <div id="errorMsg" class="error"></div>
-        <br><br>
-        <button type="button" onclick="clearData()" style="background: #dc3545; font-size: 12px;">Reset App Data</button>
     </div>
 
     <script src="User.js"></script>
@@ -79,14 +77,6 @@
                 document.getElementById('errorMsg').textContent = result.message;
             }
         });
-
-        // clears localStorage if something got corrupted
-        function clearData() {
-            localStorage.clear();
-            sessionStorage.clear();
-            alert("App data cleared! Try logging in again.");
-            location.reload();
-        }
     </script>
 </body>
 
