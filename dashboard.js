@@ -34,10 +34,23 @@ function showNavigation() {
         buttons += '<button onclick="showSection(\'reportHR\')">Submit Report</button>';
         buttons += '<button onclick="showSection(\'requestHRMeeting\')">Request HR Meeting</button>';
         buttons += '<button onclick="showSection(\'logBreak\')">Log Break</button>';
-        buttons += '<button onclick="showSection(\'logClient\')">Add Client</button>';
-        buttons += '<button onclick="showSection(\'logMeeting\')">Log Meeting</button>';
         buttons += '<button onclick="showSection(\'viewHistory\')">View History</button>';
         buttons += '<button onclick="showSection(\'viewNotifications\')">View Notifications</button>';
+    }
+
+    // only Acquisition team can add clients
+    if (currentUser.department === "Acquisition") {
+        buttons += '<button onclick="showSection(\'logClient\')">Add Client</button>';
+    }
+
+    // Sales and Acquisition can log meetings with clients
+    if (currentUser.department === "Sales" || currentUser.department === "Acquisition") {
+        buttons += '<button onclick="showSection(\'logMeeting\')">Log Meeting</button>';
+    }
+
+    // Sales can view clients (read-only), Acquisition can add/edit
+    if (currentUser.department === "Sales" || currentUser.department === "Acquisition") {
+        buttons += '<button onclick="showSection(\'viewClients\')">View Clients</button>';
     }
 
     // manager-only buttons
@@ -45,7 +58,6 @@ function showNavigation() {
         buttons += '<button onclick="showSection(\'viewEmployees\')">View Employees</button>';
         buttons += '<button onclick="showSection(\'bookMeeting\')">Book Meeting</button>';
         buttons += '<button onclick="showSection(\'viewEmployeeMeetings\')">View Meeting Logs</button>';
-        buttons += '<button onclick="showSection(\'viewClients\')">View Clients</button>';
         buttons += '<button onclick="showSection(\'viewFlagged\')">View Flagged</button>';
         buttons += '<button onclick="showSection(\'viewRequests\')">View Requests</button>';
         buttons += '<button onclick="showSection(\'viewTickets\')">View Tickets</button>';
@@ -769,11 +781,17 @@ function loadLeaveDays() {
     document.getElementById('personalDaysRemaining').textContent = leaveDays.personalDays;
 }
 
-// client list with edit buttons so managers can update info
+// client list - Acquisition can edit, Sales can only view
 function loadClients() {
     const clients = app.getClientsForManager(currentUser.id);
 
-    let html = "<table><tr><th>Client ID</th><th>Name</th><th>Email</th><th>Action</th></tr>";
+    // only show Action column if user can edit (Acquisition dept)
+    const canEdit = currentUser.department === "Acquisition";
+    let html = "<table><tr><th>Client ID</th><th>Name</th><th>Email</th>";
+    if (canEdit) {
+        html += "<th>Action</th>";
+    }
+    html += "</tr>";
 
     for (let i = 0; i < clients.length; i++) {
         const client = clients[i];
@@ -782,9 +800,11 @@ function loadClients() {
         html += "<td>" + client.getClientId() + "</td>";
         html += "<td>" + client.getName() + "</td>";
         html += "<td>" + (client.getEmail() || "N/A") + "</td>";
-        const safeName = client.getName().replace(/'/g, "\\'");
-        const safeEmail = (client.getEmail() || "").replace(/'/g, "\\'");
-        html += "<td><button onclick=\"editClient(" + client.getClientId() + ", '" + safeName + "', '" + safeEmail + "')\">Edit</button></td>";
+        if (canEdit) {
+            const safeName = client.getName().replace(/'/g, "\\'");
+            const safeEmail = (client.getEmail() || "").replace(/'/g, "\\'");
+            html += "<td><button onclick=\"editClient(" + client.getClientId() + ", '" + safeName + "', '" + safeEmail + "')\">Edit</button></td>";
+        }
         html += "</tr>";
     }
 
