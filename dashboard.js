@@ -628,12 +628,17 @@ function loadCEOStats() {
 
 // manager sees their team's info including phone, late count, etc.
 function loadEmployees() {
-    if (!currentUser.emps) return;
+    // get fresh employee list from app (not stale session data)
+    const emps = app.getEmployeesForManager(currentUser.id);
+    if (!emps || emps.length === 0) {
+        document.getElementById('employeesContent').innerHTML = "<p>No employees assigned.</p>";
+        return;
+    }
 
     let html = "<table><tr><th>Employee ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Department</th><th>Late Count</th><th>Sick Days Taken</th><th>Personal Days Remaining</th></tr>";
 
-    for (let i = 0; i < currentUser.emps.length; i++) {
-        const empRef = currentUser.emps[i];
+    for (let i = 0; i < emps.length; i++) {
+        const empRef = emps[i];
         const empInfo = app.getEmployeeInfo(empRef.id);
 
         if (empInfo) {

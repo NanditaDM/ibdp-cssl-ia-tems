@@ -152,6 +152,15 @@ class Application {
         return null;
     }
 
+    // returns fresh employee list for a manager (not stale session data)
+    getEmployeesForManager(managerId) {
+        const manager = this.getUserByID(managerId);
+        if (manager instanceof Manager) {
+            return manager.getEmps();
+        }
+        return [];
+    }
+
     // returns all managers so IT can populate the dropdown when adding a user
     getManagers() {
         const managers = [];
