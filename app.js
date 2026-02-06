@@ -45,25 +45,6 @@ class Application {
         return this.#idCounters[type];
     }
 
-    // filters any record array to only include a manager's own employees
-    // used by getRequestsForManager, getTicketsForManager, getMeetingsForManager
-    #getRecordsForManager(managerId, records, getIdFn) {
-        const result = [];
-        const manager = this.getUserByID(managerId);
-
-        if (manager instanceof Manager) {
-            const empIds = manager.getEmps().map(e => e.id);
-
-            for (let i = 0; i < records.length; i++) {
-                if (empIds.includes(getIdFn(records[i]))) {
-                    result.push(records[i]);
-                }
-            }
-        }
-
-        return result;
-    }
-
     // sets up all the pre-made accounts for testing
     initUsers() {
         this.#users.push(new CEO(this.#nextId('users'), "Neha Sharma", "ceo_neha@turtlemint.com", "NehaCEO@2025"));
@@ -152,7 +133,7 @@ class Application {
         return null;
     }
 
-    // returns fresh employee list for a manager (not stale session data)
+    // returns employee list for a manager
     getEmployeesForManager(managerId) {
         const manager = this.getUserByID(managerId);
         if (manager instanceof Manager) {
@@ -181,7 +162,7 @@ class Application {
         // check for duplicate email
         for (let i = 0; i < this.#users.length; i++) {
             if (this.#users[i].getEmail() === email) {
-                return { success: false, message: "A user with this email already exists" };
+                return { success: false, message: "A user with this email already exists." };
             }
         }
 
@@ -278,7 +259,15 @@ class Application {
             }
 
             if (lateCount > 3) {
-                if (!this.#flaggedEmployees.includes(userId)) {
+                // Check if userId is already flagged using basic for loop
+                let alreadyFlagged = false;
+                for (let k = 0; k < this.#flaggedEmployees.length; k++) {
+                    if (this.#flaggedEmployees[k] === userId) {
+                        alreadyFlagged = true;
+                        break;
+                    }
+                }
+                if (!alreadyFlagged) {
                     this.#flaggedEmployees.push(userId);
                 }
 
@@ -305,11 +294,13 @@ class Application {
         const req = new LeaveRequest(id, userId, type, reason);
         this.#leaveRequests.push(req);
 
-        // track sick days on the employee object
-        if (type === "Sick") {
-            const user = this.getUserByID(userId);
-            if (user instanceof Employee) {
+        // track leave days on the employee object
+        const user = this.getUserByID(userId);
+        if (user instanceof Employee) {
+            if (type === "Sick") {
                 user.incrementSickDays();
+            } else if (type === "Personal") {
+                user.decrementPersonalDays();
             }
         }
 
@@ -559,9 +550,25 @@ class Application {
         return this.#flaggedEmployees;
     }
 
-    // these three use the shared helper to filter by manager's employees
+    // returns only leave requests from the manager's employees
     getRequestsForManager(managerId) {
-        return this.#getRecordsForManager(managerId, this.#leaveRequests, r => r.getEmployeeId());
+        const result = [];
+        const manager = this.getUserByID(managerId);
+
+        if (manager instanceof Manager) {
+            const emps = manager.getEmps();
+            for (let i = 0; i < this.#leaveRequests.length; i++) {
+                const req = this.#leaveRequests[i];
+                for (let j = 0; j < emps.length; j++) {
+                    if (emps[j].id === req.getEmployeeId()) {
+                        result.push(req);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
     updateRequestStatus(requestId, status) {
@@ -575,10 +582,6 @@ class Application {
         return { success: false };
     }
 
-    getTicketsForManager(managerId) {
-        return this.#getRecordsForManager(managerId, this.#tickets, t => t.getFlaggerId());
-    }
-
     // only CEO, HR, IT, and managers can send notifications
     // managers are restricted to their own department
     sendNotification(senderId, message, recipientDept) {
@@ -586,11 +589,11 @@ class Application {
         const senderRole = sender ? sender.getRole() : null;
 
         if (senderRole !== "CEO" && senderRole !== "HR" && senderRole !== "IT" && senderRole !== "Manager") {
-            return { success: false, message: "Unauthorized to send notifications" };
+            return { success: false, message: "Unauthorized to send notifications." };
         }
 
         if (senderRole === "Manager" && recipientDept !== sender.getDept()) {
-            return { success: false, message: "Managers can only notify their own department" };
+            return { success: false, message: "Managers can only notify their own department." };
         }
 
         const id = this.#nextId('notifications');
@@ -664,18 +667,6 @@ class Application {
                     this.#notifications.push(notif);
                 }
 
-                this.saveToStorage();
-                return { success: true };
-            }
-        }
-        return { success: false };
-    }
-
-    // employee can re-flag a ticket if the issue wasn't actually fixed
-    flagTicket(ticketId) {
-        for (let i = 0; i < this.#tickets.length; i++) {
-            if (this.#tickets[i].getTicketId() === ticketId) {
-                this.#tickets[i].setStatus("Flagged");
                 this.saveToStorage();
                 return { success: true };
             }
@@ -840,8 +831,25 @@ class Application {
         return null;
     }
 
+    // returns only meetings logged by the manager's employees
     getMeetingsForManager(managerId) {
-        return this.#getRecordsForManager(managerId, this.#meetings, m => m.getEmployeeId());
+        const result = [];
+        const manager = this.getUserByID(managerId);
+
+        if (manager instanceof Manager) {
+            const emps = manager.getEmps();
+            for (let i = 0; i < this.#meetings.length; i++) {
+                const meeting = this.#meetings[i];
+                for (let j = 0; j < emps.length; j++) {
+                    if (emps[j].id === meeting.getEmployeeId()) {
+                        result.push(meeting);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
     // all clients are shared across the company

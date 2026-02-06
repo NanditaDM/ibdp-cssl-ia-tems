@@ -101,6 +101,12 @@ class Employee extends User {
         this.#sickDays++;
     }
 
+    decrementPersonalDays() {
+        if (this.#personalDaysRemaining > 0) {
+            this.#personalDaysRemaining--;
+        }
+    }
+
 }
 
 // manager class - inherits from Employee, manages a list of employees
@@ -112,9 +118,9 @@ class Manager extends Employee {
         this.#emps = [];
     }
 
-    // returns employee list sorted alphabetically
+    // returns employee list
     getEmps() {
-        return this.#emps.slice().sort((a, b) => a.name.localeCompare(b.name));
+        return this.#emps;
     }
 
     addEmployee(emp) {

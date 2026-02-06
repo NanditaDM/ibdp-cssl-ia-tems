@@ -60,7 +60,6 @@ function showNavigation() {
         buttons += '<button onclick="showSection(\'viewEmployeeMeetings\')">View Meeting Logs</button>';
         buttons += '<button onclick="showSection(\'viewFlagged\')">View Flagged</button>';
         buttons += '<button onclick="showSection(\'viewRequests\')">View Requests</button>';
-        buttons += '<button onclick="showSection(\'viewTickets\')">View Tickets</button>';
         buttons += '<button onclick="showSection(\'sendNotification\')">Send Notification</button>';
     }
 
@@ -106,8 +105,6 @@ function showSection(sectionID) {
         loadFlagged();
     } else if (sectionID === 'viewRequests') {
         loadRequests();
-    } else if (sectionID === 'viewTickets' && currentUser.type === "Manager") {
-        loadManagerTickets();
     } else if (sectionID === 'viewReports') {
         loadReports();
     } else if (sectionID === 'itTickets') {
@@ -284,21 +281,16 @@ function loadHistory() {
     const end = start + itemsPerPage;
     const pageItems = history.slice(start, end);
 
-    let html = "<table><tr><th>Type</th><th>Details</th><th>Date/Time</th><th>Action</th></tr>";
+    let html = "<table><tr><th>Type</th><th>Details</th><th>Date/Time</th></tr>";
 
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
         let details = "";
-        let action = "";
 
         if (item.type === "Leave Request") {
             details = item.data.getType() + " - " + item.data.getReason() + " - " + item.data.getStatus();
         } else if (item.type === "Ticket") {
             details = item.data.getDescription() + " - " + item.data.getStatus();
-            // let them re-flag if the issue came back
-            if (item.data.getStatus() === "Resolved") {
-                action = '<button onclick="flagTicketBack(' + item.data.getTicketId() + ')">Flag</button>';
-            }
         } else if (item.type === "Report") {
             details = item.data.getType() + " - " + item.data.getDescription();
         } else if (item.type === "Meeting") {
@@ -311,7 +303,7 @@ function loadHistory() {
             details = item.data.getTimeEntry() + (item.data.getLateReason() ? " (Late: " + item.data.getLateReason() + ")" : "");
         }
 
-        html += "<tr><td>" + item.type + "</td><td>" + details + "</td><td>" + new Date(item.dateTime).toLocaleString() + "</td><td>" + action + "</td></tr>";
+        html += "<tr><td>" + item.type + "</td><td>" + details + "</td><td>" + new Date(item.dateTime).toLocaleString() + "</td></tr>";
     }
 
     html += "</table>";
@@ -436,28 +428,6 @@ function rejectRequest(requestId) {
     }
 }
 
-// manager sees IT tickets from their team
-function loadManagerTickets() {
-    const tickets = app.getTicketsForManager(currentUser.id);
-
-    let html = "<table><tr><th>Flagger ID</th><th>Description</th><th>ETA</th><th>Status</th></tr>";
-
-    for (let i = 0; i < tickets.length; i++) {
-        const ticket = tickets[i];
-
-        html += "<tr>";
-        html += "<td>" + ticket.getFlaggerId() + "</td>";
-        html += "<td>" + ticket.getDescription() + "</td>";
-        html += "<td>" + (ticket.getEta() || "Not set") + "</td>";
-        html += "<td>" + ticket.getStatus() + "</td>";
-        html += "</tr>";
-    }
-
-    html += "</table>";
-
-    document.getElementById('ticketsContent').innerHTML = html;
-}
-
 function sendNotif() {
     const recipientDept = document.getElementById('notifRecipientDept').value;
     const message = document.getElementById('notifMessage').value;
@@ -507,20 +477,17 @@ function loadITTickets() {
 
     let totalResolved = 0;
     let totalPending = 0;
-    let totalFlagged = 0;
 
     for (let i = 0; i < allTickets.length; i++) {
         if (allTickets[i].getStatus() === "Resolved") {
             totalResolved++;
         } else if (allTickets[i].getStatus() === "Pending") {
             totalPending++;
-        } else if (allTickets[i].getStatus() === "Flagged") {
-            totalFlagged++;
         }
     }
 
     let html = "<h4>Ticket Stats</h4>";
-    html += "<p>Total: " + allTickets.length + " | Pending: " + totalPending + " | Resolved: " + totalResolved + " | Flagged: " + totalFlagged + "</p>";
+    html += "<p>Total: " + allTickets.length + " | Pending: " + totalPending + " | Resolved: " + totalResolved + "</p>";
 
     html += "<h4>Pending Tickets</h4>";
     html += "<table><tr><th>Ticket ID</th><th>Flagger ID</th><th>Description</th><th>ETA</th><th>Action</th></tr>";
@@ -546,33 +513,6 @@ function loadITTickets() {
 
     html += "</table>";
 
-    // also show any tickets that employees flagged back
-    let flaggedTickets = [];
-    for (let i = 0; i < allTickets.length; i++) {
-        if (allTickets[i].getStatus() === "Flagged") {
-            flaggedTickets.push(allTickets[i]);
-        }
-    }
-
-    if (flaggedTickets.length > 0) {
-        html += "<h4>Flagged Tickets</h4>";
-        html += "<table><tr><th>Ticket ID</th><th>Flagger ID</th><th>Description</th><th>ETA</th><th>Action</th></tr>";
-
-        for (let i = 0; i < flaggedTickets.length; i++) {
-            const ticket = flaggedTickets[i];
-            html += "<tr>";
-            html += "<td>" + ticket.getTicketId() + "</td>";
-            html += "<td>" + ticket.getFlaggerId() + "</td>";
-            html += "<td>" + ticket.getDescription() + "</td>";
-            html += "<td>" + (ticket.getEta() || "Not set") + "</td>";
-            html += "<td>";
-            html += '<button onclick="markResolved(' + ticket.getTicketId() + ')">Resolve</button>';
-            html += "</td></tr>";
-        }
-
-        html += "</table>";
-    }
-
     document.getElementById('itTicketsContent').innerHTML = html;
 }
 
@@ -587,12 +527,6 @@ function setETA(ticketId) {
 function markResolved(ticketId) {
     app.resolveTicket(ticketId);
     loadITTickets();
-}
-
-// employee can flag a ticket again if the fix didn't work
-function flagTicketBack(ticketId) {
-    app.flagTicket(ticketId);
-    loadHistory();
 }
 
 // CEO stats - company overview with break time averages per dept
